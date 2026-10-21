@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub App dual-identity experiment</title>
+<main><h1>GitHub App dual-identity experiment</h1>
+<p>Only the configured operator can use this test. Writes target one fixed Issue.</p>
+<a href="/api/experiment?step=login">Authorize GitHub App</a>
+<pre id="status">Session status not checked.</pre>
+<button id="check">Check user session</button>
+<button id="bot">Check installation token</button>
+<label>Comment <input id="body" maxlength="300" value="Testing GitHub App identity"></label>
+<button id="user">Post as user</button><button id="botwrite">Post as Bot</button>
+<pre id="result"></pre></main>
+<script type="module">
+let session;
+const output = document.getElementById('result');
+async function check() {
+ const res = await fetch('/api/experiment?step=me', { cache: 'no-store' });
+ session = res.ok ? await res.json() : null;
+ document.getElementById('status').textContent = session ? JSON.stringify({login:session.login,repo:session.repo,issue:session.issue,writeEnabled:session.writeEnabled},null,2) : 'Not signed in';
+}
+document.getElementById('check').onclick = check;
+document.getElementById('bot').onclick = async () => {
+ const r = await fetch('/api/experiment?step=bot', { cache:'no-store' }); output.textContent = JSON.stringify(await r.json(),null,2);
+};
+for (const mode of ['user','bot']) document.getElementById(mode==='user'?'user':'botwrite').onclick = async () => {
+ if (!session) return output.textContent='Authorize first';
+ const r = await fetch('/api/experiment?step=comment', { method:'POST', headers:{ 'content-type':'application/json','x-csrf-token':session.csrf },body:JSON.stringify({as:mode,body:document.getElementById('body').value}) });
+ output.textContent=JSON.stringify(await r.json(),null,2);
+};
+check();
+</script></html>
