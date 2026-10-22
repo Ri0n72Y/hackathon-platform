@@ -1,7 +1,51 @@
-import {useSyncExternalStore} from 'react'
-import type {ComponentType} from 'react'
-const registry=new Map<string,ComponentType>(),listeners=new Set<()=>void>()
-let snapshot:ComponentType[]=[]
-const publish=()=>{snapshot=[...registry.values()];listeners.forEach(fn=>fn())}
-export const reactUI={register(id:string,View:ComponentType){if(registry.has(id))throw Error('duplicate UI');registry.set(id,View);publish();return ()=>{registry.delete(id);publish()}}}
-export function App(){const items=useSyncExternalStore(fn=>{listeners.add(fn);return ()=>listeners.delete(fn)},()=>snapshot);return <main>{items.map((View,i)=><View key={i}/>)}</main>}
+import { Service, type Context } from '@deepseek-ai/cordis'
+import { useSyncExternalStore, type ComponentType } from 'react'
+
+type Registration = { id: string; Component: ComponentType }
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    reactUI: ReactUIService
+  }
+}
+
+/** @summary Own the Cordis UI registry and notify the React shell when it changes. */
+export class ReactUIService extends Service {
+  private registry = new Map<string, ComponentType>()
+  private listeners = new Set<() => void>()
+  private snapshot: Registration[] = []
+
+  constructor(ctx: Context) {
+    super(ctx, 'reactUI')
+  }
+
+  getSnapshot = () => this.snapshot
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  register(id: string, Component: ComponentType) {
+    if (this.registry.has(id)) throw new Error('duplicate UI: ' + id)
+    this.registry.set(id, Component)
+    this.publish()
+    return () => {
+      if (this.registry.get(id) === Component) {
+        this.registry.delete(id)
+        this.publish()
+      }
+    }
+  }
+
+  private publish() {
+    this.snapshot = [...this.registry].map(([id, Component]) => ({ id, Component }))
+    this.listeners.forEach(listener => listener())
+  }
+}
+
+/** @summary Render the Cordis-provided UI components in one React tree. */
+export function App({ ui }: { ui: ReactUIService }) {
+  const entries = useSyncExternalStore(ui.subscribe, ui.getSnapshot)
+  return <main>{entries.map(({ id, Component }) => <Component key={id} />)}</main>
+}
