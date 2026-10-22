@@ -255,8 +255,44 @@ SHA、原始地址、作者、提交者、提交时间和原始提交信息等�
 1.  Commit Message。
 2.  Issue 中符合约定格式的结构化评论。
 
-结构化评论可以关联多个 Commit SHA。一条结构化劳动记录与多个 Commit Asset
-的关系采用一对多模型。具体评论格式和字段在实现阶段定义。
+结构化评论以 Issue 回复中的独立 `yaml` 代码块表示，一条有效评论对应一条劳动记录。
+`labour` 是顶层标识，字段契约如下：
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `work` | 是 | 用自然语言描述具体做了什么，允许多行文本。 |
+| `commits` | 否 | 关联的 GitHub Commit SHA 列表；测试、写作、与 AI 交流等工作可以没有 Commit。 |
+| `outcome` | 否 | 劳动成果说明；可以补充 Commit，也可以独立说明没有 Commit 的成果。 |
+| `duration` | 是 | 主观估计时长，按 0.5 小时为单位，以 `~1.5h` 等字符串表达；不要求计时证明。 |
+| `start-end` | 否 | 劳动起止时间；如填写，使用 `start` 与 `end` 两个 RFC 3339 时间戳。 |
+
+最短记录：
+
+```yaml
+labour:
+  work: 测试 GitHub App 授权流程
+  duration: ~1.5h
+```
+
+带成果、Commit 和起止时间的记录：
+
+```yaml
+labour:
+  work: |
+    测试 GitHub App 用户授权，并整理使用文档。
+  commits:
+    - 6dcb09b5b57875f334f61aebed695e2e4193db5e
+  outcome: |
+    验证了授权回调，并整理出配置说明。
+  duration: ~2h
+  start-end:
+    start: "2026-10-22T09:00:00Z"
+    end: "2026-10-22T11:00:00Z"
+```
+
+`duration` 以小时计，接受 `~0.5h`、`~1h`、`~1.5h` 等 0.5 小时递增的**主观估计**，不根据 Commit 数量或起止时间自动推算；`start-end` 完全可选，不填时劳动实际发生时间保持未知。GitHub 评论的创建时间只作为提交时间，不代替劳动发生时间。无 Commit 的劳动记录同样有效。
+
+评论的 GitHub ID、作者、创建时间和所属 Issue 使用 GitHub 原始元数据，不要求劳动者重复填写。仅识别顶层为 `labour` 的完整 YAML 代码块；未通过校验的评论保留为普通讨论。关联多个 Commit SHA 时，一条结构化劳动记录与多个 Commit Asset 按一对多关系处理。
 
 规则：
 
@@ -327,6 +363,9 @@ Bot 等参与主体。成员可以没有 GitHub 账号。
 -   [ ] 频道只选择最新创建的有效 Open Issue。
 -   [ ] 删除 Wishlist 配置后，Wishlist 专用页面不再渲染。
 -   [ ] 创建 Issue、回复评论和修改 Label 时遵守 GitHub 用户权限。
+-   [ ] 按 `labour` YAML 格式解析 Issue 评论，支持必填 `work` 和
+    以 0.5 小时为单位的主观估时 `duration`，以及可选 `commits`、
+    `outcome`、`start-end`；无 Commit 的记录仍有效。
 -   [ ] 结构化劳动记录能关联多个 Commit，且被包含的 Commit
     不重复生成基础记录。
 -   [ ] 浏览器刷新和强制刷新行为清楚；缓存失败不会被伪装成最新数据。
@@ -338,7 +377,7 @@ Bot 等参与主体。成员可以没有 GitHub 账号。
 边界成立，但需要在实现前或实现过程中形成具体契约：
 
 -   `labourchain.config.yaml` 的最终字段名和完整 Schema。
--   结构化劳动记录评论的具体格式。
+-   结构化劳动记录 YAML 的解析实现与错误提示（字段格式见 §9.4）。
 -   `team-index/` 的最小字段和索引格式。
 -   首页索引仓库的具体文件布局与项目元数据字段。
 -   GitHub App 用户令牌的会话与安全存储方案。
