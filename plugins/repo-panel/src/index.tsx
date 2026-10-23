@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { RepoIssuesService } from '../../repo-issues/src/index'
+import { IssueWorkspace } from './issue-workspace'
 
 type PermissionFlags = { admin: boolean; maintain: boolean; push: boolean; triage: boolean; pull: boolean }
 type VerificationResult = {
@@ -98,15 +99,13 @@ export function RepoPanel({ service }: { service: RepoIssuesService }) {
     {s.loading && <p role="status">加载中…</p>}
     {s.error && <p role="alert">读取失败：{s.error}</p>}
     {!s.loading && !s.error && <>
-      <h2>Open Issues ({s.issues.length})</h2>
-      <ul>{s.issues.map(issue => <li key={issue.number}>
-        <span>#{issue.number}</span>
-        <a href={issue.html_url} target="_blank" rel="noreferrer">{issue.title}</a>
-        <small>{issue.comments} comments</small>
-      </li>)}</ul>
-      {!s.issues.length && <p>暂无 Issue。</p>}
+      {s.repos.find(repo => repo.full_name === s.selected) && <IssueWorkspace
+        key={s.selected}
+        repo={s.repos.find(repo => repo.full_name === s.selected)!}
+        issues={s.issues}
+        loggedIn={session === 'connected'} />}
     </>}
-    <footer>Issue 仍通过 GitHub App 安装权限只读；登录仅验证用户 OAuth 会话。</footer>
+    <footer>Issue 读取使用安装授权；创建和评论使用已登录的 GitHub 用户身份，不使用 Bot 写入。</footer>
   </div>
 }
 
