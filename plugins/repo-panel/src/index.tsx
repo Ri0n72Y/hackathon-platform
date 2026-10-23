@@ -98,13 +98,11 @@ export function RepoPanel({ service }: { service: RepoIssuesService }) {
     </section>}
     {s.loading && <p role="status">加载中…</p>}
     {s.error && <p role="alert">读取失败：{s.error}</p>}
-    {!s.loading && !s.error && <>
-      {s.repos.find(repo => repo.full_name === s.selected) && <IssueWorkspace
+    {s.repos.find(repo => repo.full_name === s.selected) && <IssueWorkspace
         key={s.selected}
         repo={s.repos.find(repo => repo.full_name === s.selected)!}
         issues={s.issues}
         loggedIn={session === 'connected'} />}
-    </>}
     <footer>Issue 读取使用安装授权；创建和评论使用已登录的 GitHub 用户身份，不使用 Bot 写入。</footer>
   </div>
 }

@@ -44,6 +44,8 @@ export function repoPath(owner, repo) {
 }
 
 /** User-to-server writes: require an explicit same-origin JSON request and installation membership. */
+const MAX_WRITE_BYTES = 128 * 1024
+
 export async function writeContext(request) {
   if (request.method !== 'POST') return { error: json({ error: 'Method not allowed' }, 405) }
   let config
@@ -58,12 +60,12 @@ export async function writeContext(request) {
     return { error: json({ error: 'Only application/json is accepted' }, 415) }
   }
   const length = Number(request.headers.get('content-length') || '0')
-  if (length > 26000) return { error: json({ error: '请求内容过长' }, 413) }
+  if (length > MAX_WRITE_BYTES) return { error: json({ error: '请求内容过长' }, 413) }
 
   let body
   try {
     const raw = await request.text()
-    if (Buffer.byteLength(raw, 'utf8') > 26000) return { error: json({ error: '请求内容过长' }, 413) }
+    if (Buffer.byteLength(raw, 'utf8') > MAX_WRITE_BYTES) return { error: json({ error: '请求内容过长' }, 413) }
     body = JSON.parse(raw)
   } catch {
     return { error: json({ error: 'JSON 格式错误' }, 400) }
