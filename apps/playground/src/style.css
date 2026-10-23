@@ -4,3 +4,25 @@
 .login:focus-visible{outline:2px solid #195ca8;outline-offset:3px}
 .session-status{font-size:14px;color:#476078}
 @media(max-width:540px){header{flex-wrap:wrap;gap:8px}.shell{padding:28px 18px}}
+
+.issue-workspace{margin-top:26px}
+.issue-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.issue-toolbar h2,.issue-toolbar h3{margin:12px 0}
+.issue-list{margin:12px 0}
+.issue-list li{align-items:center}
+.issue-list li .issue-open{flex:1;text-align:left;border:0;background:transparent;padding:2px;color:#195ca8;font:inherit;cursor:pointer;overflow-wrap:anywhere}
+.issue-list li .issue-open.selected{font-weight:700}
+.issue-list li a{flex:initial}
+.issue-list li small{white-space:nowrap}
+.issue-detail,.editor{border:1px solid #ccd3de;border-radius:10px;background:white;padding:18px;margin-top:20px}
+.issue-detail h3{overflow-wrap:anywhere}
+.issue-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.issue-comment{border-top:1px solid #e3e8ee;padding:14px 0}
+.comment-meta,.note{color:#65758b;font-size:13px}
+.editor{display:grid;gap:14px}
+.editor label{display:grid;gap:6px}
+.editor input,.editor textarea{box-sizing:border-box;width:100%;border:1px solid #ccd3de;border-radius:8px;padding:10px;font:inherit}
+.editor button{justify-self:start}
+.success-message{color:#1f6b45;overflow-wrap:anywhere}
+.error-message{color:#a72235;overflow-wrap:anywhere}
+@media(max-width:540px){.issue-list li{flex-wrap:wrap}.issue-list li small{order:2}}
