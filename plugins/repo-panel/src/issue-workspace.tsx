@@ -153,7 +153,7 @@ export function IssueWorkspace({ repo, issues, loggedIn }: {
       </button>
     </div>
     {!loggedIn && <p className="note">登录 GitHub 后可以创建 Issue 和发表评论；浏览不需要登录。</p>}
-    {notice && <p role={notice.error ? 'alert' : 'status'} className={notice.error ? 'error-message' : 'success-message'}>
+    {opened === null && notice && <p role={notice.error ? 'alert' : 'status'} className={notice.error ? 'error-message' : 'success-message'}>
       {notice.text}
       {notice.url && <> <a href={notice.url} target="_blank" rel="noreferrer">在 GitHub 查看</a></>}
       {notice.relogin && <> <a href="/api/github-login">重新登录</a></>}
@@ -195,6 +195,11 @@ export function IssueWorkspace({ repo, issues, loggedIn }: {
           <div className="issue-body">{item.body}</div>
         </article>)}
         {detail.issue.comments > 100 && <p className="note">目前仅加载前 100 条评论，其他评论请到 GitHub 查看。</p>}
+        {notice && <p role={notice.error ? 'alert' : 'status'} className={notice.error ? 'error-message' : 'success-message'}>
+          {notice.text}
+          {notice.url && <> <a href={notice.url} target="_blank" rel="noreferrer">在 GitHub 查看</a></>}
+          {notice.relogin && <> <a href="/api/github-login">重新登录</a></>}
+        </p>}
         {loggedIn ? <form className="editor" onSubmit={event => void submitComment(event)}>
           <label>发表评论（支持 Markdown）<textarea rows={5} maxLength={20000}
             value={reply} onChange={event => setReply(event.target.value)}
