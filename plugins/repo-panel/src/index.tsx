@@ -67,7 +67,11 @@ export function RepoPanel({ service }: { service: RepoIssuesService }) {
         : session === 'checking'
           ? <span className="session-status">检查登录状态…</span>
           : <a className="login" href="/api/github-login">GitHub 登录</a>}
-      <button disabled={s.loading} onClick={() => void service.refresh()}>刷新</button>
+      <button disabled={s.loading} onClick={() => {
+        verifyRevision.current++
+        setVerification({ status: 'idle' })
+        void service.refresh()
+      }}>刷新</button>
     </div></header>
     <p>已安装授权的公开 GitHub 仓库（只读）</p>
     <label>仓库 <select value={s.selected} disabled={s.loading || !s.repos.length} onChange={e => selectRepo(e.target.value)}>
