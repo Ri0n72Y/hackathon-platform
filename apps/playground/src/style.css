@@ -1,1 +1,6 @@
 :root{font-family:system-ui,sans-serif;color:#202c3c;background:#f5f7fa}body{margin:0}.shell{max-width:850px;margin:auto;padding:44px 22px}header{display:flex;justify-content:space-between;align-items:center}h1{font-size:26px}p,footer,small{color:#65758b}button,select{background:white;border:1px solid #ccd3de;border-radius:8px;padding:10px;font:inherit}select{margin-left:12px}button{cursor:pointer}ul{list-style:none;padding:0;background:white;border:1px solid #ddd;border-radius:8px}li{padding:15px;display:flex;gap:16px;border-bottom:1px solid #eee}li:last-child{border:0}li a{flex:1;color:#195ca8;text-decoration:none}footer{margin-top:30px;font-size:13px}
+.actions{display:flex;align-items:center;gap:10px}
+.login{display:inline-block;background:#202c3c;color:white;text-decoration:none;border-radius:8px;padding:10px}
+.login:focus-visible{outline:2px solid #195ca8;outline-offset:3px}
+.session-status{font-size:14px;color:#476078}
+@media(max-width:540px){header{flex-wrap:wrap;gap:8px}.shell{padding:28px 18px}}
