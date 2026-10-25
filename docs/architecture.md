@@ -110,7 +110,7 @@ flowchart TB
 
 以下为用户从看板专项讨论补充的**[约束·用户确认]**，属于 Issue Board 功能的视图规则；不构成平台级通用过滤器或书签框架。
 
-- **分列规则：** 当前看板视图可以配置分列使用的 GitHub Label **Namespace**；不再将 `status:*` 写死为所有看板视图的唯一分列依据。所选 Namespace 决定 Issue 显示在哪一列；具体支持哪些 Namespace 及其有效值仍受仓库配置和业务规则约束。
+- **分列规则：** 当前看板视图可以选择 **`labourchain.config.yaml` 中已声明且定义了有效分列标签的 GitHub Label Namespace**；不允许使用未在该配置中声明的 Namespace 分列。`status:*` 不再是所有看板视图的唯一分列依据。所选 Namespace 决定 Issue 显示在哪一列；这直接沿用 MVP 规格 §5.2–5.3 的受管 Namespace 与有效标签语义，并非新增一套独立配置规则。特殊 `pinned` 标签只控制列内置顶，不作为分列 Namespace。
 - **全局置顶：** Issue 添加特殊 `pinned` Label 后，始终排在其所属列顶部，**不受当前视图分列 Namespace 的影响**。它改变列内优先级，不代替分列所属关系；即使使用手动排序模式，`pinned` 的置顶语义也成立。
 - **可共享的 Filter 视图：** 普通视图的筛选/排序规则通过 **URL Query Parameters** 表达；修改 Filter 应同步更新 URL，分享该 URL 可恢复该视图规则。它表达视图而非 GitHub 上的额外任务排序字段。
 - **本地手动排序：** 用户拖动调整**显示顺序**后，当前 Filter **直接失效并清空**，界面显示「**手动排序**」；顺序只保存在本地，不写入 GitHub，**该手动排序视图暂不支持分享**。不能将不含 Filter 的 URL 宣称为手动排序的可复现链接。
