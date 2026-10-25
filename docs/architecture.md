@@ -23,6 +23,8 @@
 
 **[约束·用户确认]** 插件无需独立部署：MVP 统一部署平台。部分功能插件能在类似 Storybook 的 **Playground** 中运行；**每个业务插件都应能在 Playground 中按自身能力单独验收**。这一点指功能可隔离验证，不表示运行时必须零依赖，也不要求所有插件都提供独立可见页面。Playground 可通过明确的共享服务或受控测试替身提供前置能力。
 
+**[约束·用户确认]** 采用**薄应用核心（Thin Core）+ 基础能力插件 + 业务功能插件**的责任划分：应用核心仅负责运行环境启动、Cordis Context 创建、插件装配与生命周期协调，不包含 GitHub 或看板等业务语义；UI 注册与 React 宿主、GitHub 身份接入、数据访问等可复用能力通过 Cordis 插件提供；业务功能插件消费所需服务并拥有各自的业务闭环。Playground 是另一种插件组合与验收入口，不是单独重写业务实现。
+
 **[待决]** 一个逻辑功能插件是否对应独立包、Function 文件布局、如何组织 Playground 场景及如何验证真实 GitHub 写入，均不在此轮冻结。
 
 ## 2. 技术架构全局地图
@@ -31,13 +33,15 @@
 flowchart TB
   User["用户 / 匿名访客"] --> UI
   subgraph Browser["浏览器 · React + Cordis"]
-    UI["React 页面与 UI 宿主"]
-    Runtime["Cordis 插件运行时 / 服务依赖"]
-    Shared["共享能力插件：身份接入 · 仓库数据 · 配置等（具体分组待决）"]
+    Core["薄应用核心：Cordis 初始化 / 插件装配 / 生命周期"]
+    UI["UI Host 插件：React 宿主 / UI 注册"]
+    Shared["基础能力插件：GitHub 身份 / 数据访问 / 配置等"]
     Features["业务功能插件：发现 · 项目 · 看板 · 频道 · 劳动记录 · 成员"]
     State["前端临时状态 / 缓存 / UI 偏好"]
-    UI <--> Runtime
-    Runtime <--> Features
+    Core --> UI
+    Core --> Shared
+    Core --> Features
+    Features <--> UI
     Features --> Shared
     Features <--> State
   end
@@ -45,7 +49,7 @@ flowchart TB
     Cases["插件验收场景 / 交互"]
     Supports["真实共享能力或受控测试替身"]
   end
-  Cases -.-> Runtime
+  Cases -.-> Core
   Supports -.-> Shared
   subgraph Server["Vercel Functions · 按请求执行"]
     Auth["OAuth / 会话 / 权限检查"]
@@ -69,7 +73,8 @@ Vercel Functions 当前并没有 Cordis 服务端运行时。是否需要它，�
 
 | 功能区域 | 核心责任（高层） | 对照现状 | 状态 |
 | --- | --- | --- | --- |
-| Web App / Plugin Host | 组装插件、React UI 宿主、应用入口、生命周期 | `apps/playground/`、`plugins/react-ui/` | [现状] 基础原型；扩展方式 [待决] |
+| Platform Core / Bootstrap | 创建 Cordis Context、装配与释放插件；不含业务逻辑 | `apps/playground/src/runtime.tsx` | [约束·用户确认] 薄核心；[现状] 基础原型 |
+| React UI Host（基础能力插件） | 唯一 React 宿主及 UI 注册、组合 | `plugins/react-ui/` | [约束·用户确认] 归插件；[现状] 已有原型 |
 | Playground / Acceptance Harness | 按业务场景单独装配插件并观察可验收行为，可按需使用可控依赖 | 现有 `apps/playground/` 目前是整体原型入口 | [约束] 需要插件级验收；场景设计 [待决] |
 | GitHub Identity & Access | App OAuth、会话、权限与安装范围校验 | `api/github-login.mjs`、`github-callback.mjs`、`github-verify.mjs` | [现状] 局部实现；完整安全验收 [待验证] |
 | GitHub Data Access | 仓库 / Issue / 评论 / Commit 的获取、分页、缓存与错误 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] Issue 基础读取；访问边界 [待决] |
@@ -91,13 +96,28 @@ Vercel Functions 当前并没有 Cordis 服务端运行时。是否需要它，�
 - **太大：** 一个插件同时独立实现看板、频道、成员和劳动记录等多个完整业务领域；应检查其是否含有多个可单独验收的业务闭环。
 - **独立验收 ≠ 零依赖：** 共享身份、数据访问等能力可以以真实实现或测试替身提供；插件不应为了 Playground 而复制整套平台。模拟验收与真实 GitHub/Vercel 集成验证应明确区分。
 
-## 4. 跨模块公共能力（仅占位）
+## 4. 平台核心与插件归属（P2 已确认）
 
-- **[现状]** Cordis 负责插件挂载、服务提供与依赖注入，React UI 通过可订阅状态接入；`runtime.tsx` 已采用 Fiber 逆序释放。
-- **[现状]** Vercel `api/*.mjs` 已提供部分 GitHub App OAuth、Issue 读取和用户身份写入。
-- **[待决]** API 端点由插件直接拥有还是由平台统一注册与路由；插件服务是否同时运行在浏览器和 Function 中。
-- **[约束]** Playground 支持按业务功能隔离验收；其场景和依赖替身不能悄悄替代真实集成验收。
-- **[待决]** 共享领域类型、插件对外契约、错误模型、缓存/刷新、路由与扩展点的责任归属。
+**[约束·用户确认]** 应用核心只负责**让插件运行和组合**，而不直接提供 GitHub、看板或其他业务能力。基础能力与业务功能均通过 Cordis 插件提供，避免核心随着产品功能增长成为庞大模块。
+
+| 层次 | 拥有什么 | 不应承担什么 | Cordis 插件？ |
+| --- | --- | --- | --- |
+| **Platform Core / Bootstrap** | 环境入口、创建 Cordis Context、装载插件、统一生命周期及退出清理 | GitHub 数据规则、身份业务、项目/看板等具体功能 | 否；它负责启动插件 |
+| **Infrastructure Plugins** | 可复用平台能力，例如 React UI 注册宿主、GitHub 授权接入与数据访问 | 直接吞并具体业务闭环 | 是；按可复用能力组织，具体数量待实践确定 |
+| **Feature Plugins** | 可在 Playground 独立验收的业务闭环，例如看板、频道、劳动记录 | 自建整套应用运行时，绕过共享服务重复实现认证/数据接入 | 是；以业务功能划分，避免过细或过大 |
+| **Playground** | 选择性装配待验收插件及必要依赖，提供交互场景、测试替身与观察入口 | 复制正式应用的业务实现，或将模拟测试等同于生产集成验收 | 否；是应用装配与验收宿主 |
+
+**[约束]** 基础能力插件可以没有独立用户页面，但应具备对其公开行为的可观察验收途径；领域内部普通函数、类型和 React 组件不因“插件化”原则而各自成为插件。业务插件可声明基础服务依赖；“独立验收”不等于“无依赖”。
+
+**[现状]** `apps/playground/src/runtime.tsx` 已在应用入口构造 Cordis Context、挂载插件并逆序释放；`plugins/react-ui/` 提供 UI 注册能力；`plugins/repo-issues/` 提供部分数据服务。这些是当前设计的起点，不代表前后端已实现完整的插件化装配。`api/*.mjs` 当前承担部分 GitHub App OAuth、Issue 读取和用户身份写入；服务端的 Cordis 插件机制并不存在。
+
+**DSH 参考边界。** [DeepSeek Harness 架构文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md) 明确采用插件树、按配置组合能力，许多位于 `core/*` 的服务本身也是 Cordis 插件，并非特权业务单体；[Web Client 架构](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/web-client.md) 也区分插件加载、服务、客户端模型和 UI 组合。这支持“薄启动层、功能由插件贡献”的组织原则。**但本项目不照搬 DSH 的 Profile/Bundle 系统、常驻 Host 或远程通信框架**：它们不是当前 MVP 的需求。这里的“Core”专指我们的最小应用引导层，不是照抄 DSH 仓库 `core/*` 的包名划分。
+
+### 尚未确定的技术边界
+
+- **[待决]** API 端点归属与注册方式；服务端是否运行 Cordis，或只共享业务插件的领域逻辑与受控 Function 入口。
+- **[待决]** 插件依赖声明、模块与公共服务契约、缓存/刷新、路由、扩展点等细节。
+- **[约束]** Playground 可按业务功能隔离验收；共享依赖可以提供真实实现或受控替身，必须区分模拟路径与真实 GitHub/Vercel 集成验证。
 - **[待验证]** 实际 Vercel 部署、会话失效、权限与安装范围、多仓库访问、GitHub 限流及并发修改。
 
 ## 5. 三类主数据流（先确定有这三类）
@@ -111,7 +131,7 @@ Vercel Functions 当前并没有 Cordis 服务端运行时。是否需要它，�
 | 决策 / 实验槽位 | 当前问题 | 本轮处理方式 |
 | --- | --- | --- |
 | P1 全栈插件的物理边界 | 已确认：按业务闭环划分、统一部署、Playground 独立验收。待决：前端与 Function 如何组织；服务端是否使用 Cordis？ | 高层原则已确认，细节后置 |
-| **P2 平台核心与插件的归属** | 哪些属于最薄的应用宿主，哪些是共享能力插件，哪些是业务功能插件？ | **下一轮优先讨论：先画清地图，不设计接口** |
+| **P2 平台核心与插件的归属** | **已确认**：最小启动/装配核心不是插件；UI 宿主、GitHub 接入/数据等基础能力及各业务闭环通过 Cordis 插件提供；Playground 是验收入口 | **已填写第 4 节**；不再将原则性划分作为待批准问题 |
 | P2b 插件依赖与公开契约 | 依赖如何声明、如何防止循环依赖，Playground 如何替换外部依赖？ | 待 P2 稳定后细化 |
 | P3 GitHub 读取与缓存边界 | 浏览器直连、Function 代理如何按场景划分？ | 结合现状与安全/速率实验 |
 | P4 身份与写操作边界 | 多仓库安装、权限、会话与幂等如何验收？ | 复用 #5 研究，补真实验证 |
@@ -135,7 +155,7 @@ Core / Soul / Principles 属于通用身份或方法层，不应替代项目自�
 
 ## 8. 后续工作节奏
 
-**先对齐地图（包含 Playground 验收角色）→ 逐个填 [待决] → 小实验验证 [待验证] → 将经确认的决定转成具体约束和测试 → 通过独立分支/PR 提交，交由 Lead 与用户确认。**
+**先对齐地图（包含 Playground 验收角色）→ 逐个填 [待决] → 小实验验证 [待验证] → 将经确认的决定转成具体约束和测试 → 通过独立分支/PR 提交，交由 Lead 与用户确认。** 已具备可靠依据、属于常规技术判断的内容直接标注来源并填入文档；仅当存在实质架构取舍、证据冲突或超出既定约束的决定时，才单独请求用户判断，避免形式性的逐项确认。
 
 本文仅提交架构讨论草稿，不修改业务代码，也不直接改变 `main`。合并及后续规范化需要 Lead 与用户确认；现有 Issues 和 PR 是工作事实的唯一 GitHub 记录位置，不另建影子任务板。
 
@@ -145,3 +165,4 @@ Core / Soul / Principles 属于通用身份或方法层，不应替代项目自�
 - [当前代码：apps/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/apps)、[plugins/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/plugins)、[api/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/api)
 - [Issue #1 技术调研](https://github.com/Ri0n72Y/hackathon-platform/issues/1)、[#2 项目页面](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[#5 GitHub 授权研究](https://github.com/Ri0n72Y/hackathon-platform/issues/5)、[#13 Team Index](https://github.com/Ri0n72Y/hackathon-platform/issues/13)
 - 用户上传的 `SKILL - team v3.md`；[agent-identity](https://github.com/Ri0n72Y/agent-identity)
+- [DSH 架构文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)、[Web Client 架构](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/web-client.md)（用于验证薄启动层和插件贡献能力的架构边界；不是照搬其部署结构）
