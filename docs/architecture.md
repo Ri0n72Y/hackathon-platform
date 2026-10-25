@@ -207,6 +207,8 @@ flowchart TB
 
 **[架构原则]** 插件激活成功与业务数据已就绪不是同一个状态。需要可观察数据时，服务自身负责状态、订阅及更新；React 界面通过服务的快照/订阅接口观察变化，不以组件局部状态作为共享业务真相。只有真正跨插件消费的行为才需要成为服务；普通业务函数与组件仍可留在拥有它的插件内部。
 
+**[React/Cordis 参考·来源明确]** [React + Cordis Web 指南](https://github.com/Ri0n72Y/agent-identity/blob/main/library/react-cordis.md) 进一步区分 Cordis Context（服务依赖）与 React Context（组件树数据传递）：数据服务可以提供 `getSnapshot/subscribe`，React 通过 `useSyncExternalStore` 订阅；无变更时 `getSnapshot()` 的返回引用须保持稳定。React 宿主拥有唯一 `createRoot()`；业务插件通过 UI 服务注册组件，并借助 `ctx.effect()` 回收注册，而不是自己创建 React Root。上述是与现有 P2/P2b 一致的**技术参考**，未因此冻结具体 UI 注册 API、文件布局或新增强制框架。
+
 **[约束·Playground]** Playground 按需要装配**被验收插件 + 声明的依赖**。对网络、授权等外部边界可以提供符合公开契约的受控替身，验证功能的成功、失败和生命周期行为；基础能力插件也可以通过操作/状态检查验收，不强制有可见的业务页面。应明确记录哪些结果来自替身、哪些来自真实 Vercel / GitHub 组合，避免把单插件验收报告为端到端验证。场景格式、目录和具体装载器暂不冻结。
 
 **[现状与差距]** `repo-panel` 已声明 `inject: ['reactUI', 'repoIssues']`，并将 UI 注册撤销交由 `ctx.effect()`；`repo-issues` 通过 `getSnapshot/subscribe` 提供可观察状态。与此同时，`repo-panel` 和其 Issue 工作区仍直接发起部分 `/api/github-*` 请求；仓库目前没有单插件场景目录与独立验收装载能力。这是需要逐步演进的**现状差距**，不应描述为插件化已全面完成。
@@ -274,7 +276,7 @@ flowchart TB
 | **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
 | **P5 项目领域模型与配置** | **已核对**：规格 §5–10 的配置 Namespace 三态、Label 同步、看板/频道规则、Repo/CardItem/Asset/Labour/成员来源语义；**已补充**看板视图新约束。**待落实**：具体 Schema、插件接口和旧规格冲突同步 | 第 3 节 **P5a–P5e** 已填写；不再将现有规则作为待决问题 |
-| **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**尚缺**：自动化测试、CI 工作流、`api/*.mjs` 专项检查与插件级独立验收装配；不能把代码存在当作已通过真实集成验收 | 第 7 节已核对当前 `main`；检查能力按首个真实业务闭环的风险补齐，不提前规定框架或新增通用基础设施 |
+| **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**本次补充**：按 `agent-identity` 已有 React Coding / Review / 导航语义资料核对组件开发参考。**尚缺**：自动化测试、CI、`api/*.mjs` 专项检查与插件级独立验收；参考资料不自动成为强制项目规范 | 第 7 节，尤其 §7.4；检查能力按实际业务风险补齐，不提前新增通用框架 |
 
 ## 7. P6 AI 开发与工程检查机制（已核对现状；验证能力随实现补齐）
 
@@ -308,6 +310,22 @@ flowchart TB
 **[实施建议·未冻结]** 不为“P6 点亮”另建测试框架、通用 Mock 平台或 CI 体系。等首个可独立验收的业务插件实际落地时，优先补上其最重要的纯领域逻辑检查、插件装配/卸载与失败用例；再根据已有构建命令和风险决定最小 CI 检查。Functions 侧认证、访问控制及写入另按 Issue #5/#18 和相应功能任务验证。这里不指定 Vitest、Playwright、lint 工具、覆盖率百分比或工作流模板。
 
 **[P6 结论]** 当前缺口是**工程检查和验收能力尚未随业务功能建立**，不是 AI 开发规则未讨论。现有 `AGENTS.md`、Issue/PR 流程与已确认插件验收原则足以支持后续有界实现；P6 不再作为需要重新选型的架构决策。
+
+### 7.4 React 组件开发与专项 Review：按 agent-identity 现有资料补充
+
+**[来源与适用状态]** 以下只整理 [`Ri0n72Y/agent-identity`](https://github.com/Ri0n72Y/agent-identity) 的现有 React/前端文档，用来补足当前 Architecture Map 对 React 组件开发及审查的参考依据。该仓库在 README 和指南中明确：通用 Skills/Library **不自动成为其他项目的强制规范**。因此本节记录**可参照的开发与 Review 做法**，不声称已自动装载 Skill，也不新增 lint、CI、覆盖率或第三方框架要求。
+
+**[组件职责·React Component Coding]** 在确有业务/展示分层需求的 JSX/TSX 组件里，优先**同文件**保留对外的功能组件及私有 `*View`：功能侧处理业务 Hook、业务状态、数据获取与操作编排，再用 props 传递显示数据与回调；`*View` 侧负责 JSX/DOM、样式、布局及视觉局部状态，不直接读取业务 Store 或调用业务 API。View 不被机械禁止使用 `useState`、动画 Hook 等视觉 Hook；纯展示或简单组件**可以保持单一组件**。只有真实复用或独立维护需求才拆文件，不为了预览创建转发 Hook、包装组件、重复类型或额外导出。
+
+**[Props 与符号说明·React Component Coding]** View 的 props 应直接表达所需数据与事件，不依赖 GitHub 响应形状或其他业务实现细节；在功能侧适配领域数据。TSX 用 TypeScript 类型、JSX 遵循项目约定。顶层具名组件、Hook 和具有独立职责的函数默认使用**简短标准 JSDoc `@summary`**；局部匿名回调与职责显而易见的辅助函数可省略，不重复填写类型已经说明的 `@param`/`@returns`。业务职责变化时同步更新说明。
+
+**[导航与操作·Frontend Development]** [Links vs. Buttons](https://github.com/Ri0n72Y/agent-identity/blob/main/.agents/skills/frontend-development/references/links-vs-buttons.md) 按**实际意图及最终 DOM**选择语义：跳转至可寻址资源/页面/片段用带真实 `href` 的 `<a>` 或最终渲染为锚点的路由 Link；执行状态更改、提交、展开等动作用 `<button>`。不以按钮外观判定元素，也不把“URL Query Parameters 发生变化”自动等同于导航：例如看板 Filter 修改 URL，仍须看交互是在导航还是操作控件。保留复制链接、新标签页、键盘访问与直接打开 URL 的能力；避免伪链接 `href="#"`、普通导航的 `button + navigate()` 及嵌套交互元素。涉及深层 SPA 路由时，须核对独立加载后的可恢复性。
+
+**[专项 Review·React Component Review]** [React Component Review](https://github.com/Ri0n72Y/agent-identity/blob/main/.agents/skills/react-component-review/SKILL.md) 要求先读实际组件源码/diff 和 props、状态、调用关系，再检查：职责边界是否成立、View 是否直接承担业务 Store/API、props 是否清晰、拆分是否必要、`@summary` 是否准确。仅报告有**具体位置、实际代价与最小修正建议**的问题；不能因 JSX 行数、View 使用 Hook 或未拆文件就判定违规。其专项结论只覆盖组件结构风格，**不冒充安全、性能、CI 或全局架构 Review**；无法验证的内容需注明，确无问题时可明确记录 `No findings.`。
+
+**[适用边界]** 组件内部的功能/View 划分，与 P2b 的**Cordis 插件/服务边界**是两个层次：功能组件仍可以消费公开 Cordis 服务，私有 View 不应因此直接依赖业务服务。以上约束按实际组件职责判断，不强求每个 Card、按钮或静态展示都单独拆分。此处**不补写来源仓库未提到的通用 React 性能优化、Hooks 规则、状态管理选型及自动化检查标准**。
+
+**直接来源：** [React Component Coding](https://github.com/Ri0n72Y/agent-identity/blob/main/.agents/skills/react-component-coding/SKILL.md) · [React Component Review](https://github.com/Ri0n72Y/agent-identity/blob/main/.agents/skills/react-component-review/SKILL.md) · [Frontend Development](https://github.com/Ri0n72Y/agent-identity/blob/main/.agents/skills/frontend-development/SKILL.md)（当前仅导航与操作控件一项） · [Links vs. Buttons](https://github.com/Ri0n72Y/agent-identity/blob/main/.agents/skills/frontend-development/references/links-vs-buttons.md) · [React + Cordis Web](https://github.com/Ri0n72Y/agent-identity/blob/main/library/react-cordis.md)。
 
 ## 8. 后续工作节奏
 
