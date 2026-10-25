@@ -23,6 +23,8 @@
 
 **[约束·用户确认]** 插件无需独立部署：MVP 统一部署平台。部分功能插件能在类似 Storybook 的 **Playground** 中运行；**每个业务插件都应能在 Playground 中按自身能力单独验收**。这一点指功能可隔离验证，不表示运行时必须零依赖，也不要求所有插件都提供独立可见页面。Playground 可通过明确的共享服务或受控测试替身提供前置能力。
 
+**[约束·用户确认]** GitHub App 安装并授权仓库即视为该公开仓库接入平台，不设平台内部第二次绑定流程；未经 App 授权的公开仓库不作为平台项目。安装授权与用户登录 OAuth 仍是两个不同的 GitHub 授权机制。
+
 **[约束·用户确认]** 采用**薄应用核心（Thin Core）+ 基础能力插件 + 业务功能插件**的责任划分：应用核心仅负责运行环境启动、Cordis Context 创建、插件装配与生命周期协调，不包含 GitHub 或看板等业务语义；UI 注册与 React 宿主、GitHub 身份接入、数据访问等可复用能力通过 Cordis 插件提供；业务功能插件消费所需服务并拥有各自的业务闭环。Playground 是另一种插件组合与验收入口，不是单独重写业务实现。
 
 **[待决]** 一个逻辑功能插件是否对应独立包、Function 文件布局、如何组织 Playground 场景及如何验证真实 GitHub 写入，均不在此轮冻结。
@@ -37,7 +39,7 @@ flowchart TB
     UI["UI Host 插件：React 宿主 / UI 注册"]
     Shared["基础能力插件：GitHub 身份 / 数据访问 / 配置等"]
     Features["业务功能插件：发现 · 项目 · 看板 · 频道 · 劳动记录 · 成员"]
-    State["前端临时状态 / 缓存 / UI 偏好"]
+    State["前端临时状态 / UI 偏好（缓存研究后置）"]
     Core --> UI
     Core --> Shared
     Core --> Features
@@ -85,7 +87,7 @@ flowchart TB
 | React UI Host（基础能力插件） | 唯一 React 宿主及 UI 注册、组合 | `plugins/react-ui/` | [约束·用户确认] 归插件；[现状] 已有原型 |
 | Playground / Acceptance Harness | 按业务场景单独装配插件并观察可验收行为，可按需使用可控依赖 | 现有 `apps/playground/` 目前是整体原型入口 | [约束] 需要插件级验收；场景设计 [待决] |
 | GitHub Identity & Access | App OAuth、会话、权限与安装范围校验 | `api/github-login.mjs`、`github-callback.mjs`、`github-verify.mjs` | [现状] 局部实现；完整安全验收 [待验证] |
-| GitHub Data Access | 仓库 / Issue / 评论 / Commit 的获取、分页、缓存与错误 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] Issue 基础读取；访问边界 [待决] |
+| GitHub Data Access | 仓库 / Issue / 评论 / Commit 的读取与错误处理；缓存暂缓 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] 固定 Installation ID 的测试链路；动态仓库定位 [待研究：#18] |
 | Project / Repository | 仓库级页面、入口和挂载状态 | 当前仓库选择界面 | [方向]；挂载流程未完成 |
 | Config & Label Management | 配置解析、校验、Label 初始化与同步 | MVP 规格中的数据契约 | [方向] 未实现 |
 | Issue Board | Issue → CardItem、状态解析、看板和状态变更 | 当前为 Issue 列表与手动创建 / 评论 | [方向] 未实现完整看板 |
@@ -140,15 +142,27 @@ flowchart TB
 ### 尚未确定的技术边界
 
 - **[已确认]** Functions 侧不运行 Cordis；**[待决]** API 端点在仓库中的组织、所属业务插件如何维护服务端处理逻辑，以及哪些纯领域代码适合跨运行时复用。
-- **[已验证]** Cordis 已提供必需服务注入、依赖卸载与生命周期；**[待决]** 具体公共服务接口、缓存/刷新、路由、跨运行时与 UI 扩展点归属。
+- **[已验证]** Cordis 已提供必需服务注入、依赖卸载与生命周期；**[待决]** 具体公共服务接口、路由、跨运行时与 UI 扩展点归属；**[暂缓]** 缓存/刷新内部机制，不纳入当前架构调查。
 - **[约束]** Playground 可按业务功能隔离验收；共享依赖可以提供真实实现或受控替身，必须区分模拟路径与真实 GitHub/Vercel 集成验证。
 - **[待验证]** 实际 Vercel 部署、会话失效、权限与安装范围、多仓库访问、GitHub 限流及并发修改。
 
 ## 5. 三类主数据流（先确定有这三类）
 
-1. **公开读取：** 用户进入公开项目 → 获得 GitHub 原始数据 → 解析配置/领域模型 → React 渲染。可在客户端读取公开数据，也可能因实际限制由受控 Function 读取；具体分配 [待决]。当前代码以 Function 的安装令牌读取为主 [现状]。
+1. **已接入公开仓库的数据读取：** GitHub App 已安装并授权目标公开仓库 → 获取 GitHub 数据 → 解析配置/领域模型 → React 渲染。**[约束·用户确认]** 有登录态时沿用户 OAuth 授权链路读取/同步；没有登录态则使用其他合法方式获取。两种路径的差异本轮不展开、不提前决定具体实现。**[现状]** 测试代码通过 Function 使用固定 Installation ID 的安装令牌读取；多用户/多安装动态仓库定位尚未实现（见 [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)）。
 2. **用户写入：** 用户执行明确操作 → 同源 Function 检查会话、目标与权限 → 用 GitHub App 用户令牌请求 GitHub → 回传结果并修正 UI。不得将服务端秘密下发浏览器 [约束]；当前 Issue 创建/评论具备这条链路的部分实现 [现状]。
 3. **仓库挂载/配置同步：** 维护者授权 → 读取与校验配置、仓库权限 → 执行受控 Label/配置操作 → 返回逐项状态与失败信息。MVP 规定同步不是原子事务 [约束]；实际闭环尚未实现 [待验证]。
+
+### P3 GitHub Data Access
+
+**[待研究：Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)** — 根据用户授权动态定位 GitHub App Installation 与可访问仓库，替代固定 `GITHUB_INSTALLATION_ID`。
+
+**[现状·技术测试已跑通]** 现有 Function 通过环境变量 `GITHUB_INSTALLATION_ID` 使用一个固定的安装实例取得 Installation Token，并读取安装授权的仓库及 Issue；这是一条已跑通的技术测试链路，**不等于**正式环境的多用户、多组织动态安装定位能力。
+
+**[约束·用户确认]** 安装 App 并授予仓库访问范围，即视为仓库自动接入平台；不设置额外绑定记录。用户有登录态时，按 OAuth 用户授权路径读取/同步；用户无登录态时，使用其他可行读取方式。**本轮不再比较两类读取路径**，也不将尚未研究的无登录读取方式提前写死。
+
+**[待研究]** 调查如何在不预设全局 Installation ID 的前提下，依据用户授权与目标仓库确认对应安装实例、仓库授权范围及权限变化；处理多安装、不同用户/组织以及撤销等边界。调研与验证任务见 [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；当前文档**不预设技术解法**。
+
+**[暂缓]** 缓存不是本轮议题。缓存相关问题暂交由 Vercel Functions 一侧后续处理，不在当前架构文档中确定缓存机制、刷新间隔或浏览器缓存策略；MVP 既有产品规格中的缓存细节后续按实际实现同步对齐。
 
 ## 6. 第一批未完成拼图
 
@@ -157,8 +171,8 @@ flowchart TB
 | **P1 全栈插件与 Serverless 运行边界** | **已确认**：浏览器 Cordis 插件 + 普通 Vercel Functions；业务插件是完整逻辑功能单元，不要求两端各运行 Cordis；部署统一。**待细化**：服务端文件归属和跨运行时代码布局 | **已填写第 2 节**；不建立第二套服务端插件运行时 |
 | **P2 平台核心与插件的归属** | **已确认**：最小启动/装配核心不是插件；UI 宿主、GitHub 接入/数据等基础能力及各业务闭环通过 Cordis 插件提供；Playground 是验收入口 | **已填写第 4 节**；不再将原则性划分作为待批准问题 |
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
-| P3 GitHub 读取与缓存边界 | 浏览器直连、Function 代理如何按场景划分？ | 结合现状与安全/速率实验 |
-| P4 身份与写操作边界 | 多仓库安装、权限、会话与幂等如何验收？ | 复用 #5 研究，补真实验证 |
+| **P3 GitHub 数据访问** | **已确认**：GitHub App 安装授权即项目接入；有登录态使用用户 OAuth 授权路径，无登录态另行读取，暂不讨论差异。**待研究**：不写死 Installation ID 的动态安装与仓库定位 | [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18) · 第 5 节；缓存暂缓，由 Functions 侧后续处理 |
+| P4 身份与写操作边界 | 用户会话、写操作权限与幂等如何验收？（Installation 动态定位单列 #18） | 复用 #5 研究，补真实验证 |
 | P5 项目领域模型与配置 | Repo / CardItem / Channel / Labour / Asset 的契约如何落地？ | 按首个真实功能分段细化 |
 | P6 AI 开发与检查机制 | 项目级规则、技能引用、CI 和 Review 如何配合？ | 先确立架构，再变成可执行规范 |
 
