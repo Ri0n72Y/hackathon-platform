@@ -43,7 +43,7 @@ flowchart TB
     UI["UI Host 插件：React 宿主 / UI 注册"]
     Shared["基础能力插件：GitHub 身份 / 数据访问 / 配置等"]
     Features["业务功能插件：发现 · 项目 · 看板 · 频道 · 劳动记录 · 成员"]
-    State["前端临时状态 / UI 偏好（缓存研究后置）"]
+    State["前端临时状态 / UI 偏好（GitHub 数据缓存优先由 Vercel 承担）"]
     Core --> UI
     Core --> Shared
     Core --> Features
@@ -91,7 +91,7 @@ flowchart TB
 | React UI Host（基础能力插件） | 唯一 React 宿主及 UI 注册、组合 | `plugins/react-ui/` | [约束·用户确认] 归插件；[现状] 已有原型 |
 | Playground / Acceptance Harness | 按业务场景单独装配插件并观察可验收行为，可按需使用可控依赖 | 现有 `apps/playground/` 目前是整体原型入口 | [约束] 需要插件级验收；场景设计 [待决] |
 | GitHub Identity & Access | App OAuth、会话、权限与安装范围校验 | `api/github-login.mjs`、`github-callback.mjs`、`github-verify.mjs` | [现状] 局部实现；完整安全验收 [待验证] |
-| GitHub Data Access | 仓库 / Issue / 评论 / Commit 的读取与错误处理；缓存暂缓 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] 固定 Installation ID 的测试链路；动态仓库定位 [待研究：#18] |
+| GitHub Data Access | 仓库 / Issue / 评论 / Commit 的读取与错误处理；缓存优先由 Vercel 托管 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] 固定 Installation ID 的测试链路；动态仓库定位 [待研究：#18] |
 | Project / Repository | 仓库级根对象、已授权安装范围、项目视图及仓库配置读取 | 当前仓库选择界面 | [规格已定义] 仓库及页面语义；[已确认] 安装授权即接入；流程待实现 |
 | Config & Label Management | 根配置解析、Namespace 三态校验、仅对受管 Issue 标签进行同步 | MVP 规格 §5–6 | [规格已定义] 管理与清理边界；[现状] 未实现完整同步 |
 | Issue Board | Issue → CardItem、按视图可选 Label Namespace 分列、置顶、Filter/URL 视图与本地手动排序；受控标签变更 | 当前为 Issue 列表与手动创建 / 评论 | [约束·用户补充] 视图规则已明确；[现状] 完整看板未实现 |
@@ -178,7 +178,7 @@ flowchart TB
 
 **[已确认·实现方式]** 浏览器使用 React + Cordis；Vercel Functions 处理需要受控服务器环境的 OAuth、校验和 GitHub 写入。配置解析、Namespace 匹配、状态过滤、频道选择等领域计算优先使用易测试的纯 TypeScript 逻辑；不因预留未来能力而创建多平台适配层或服务端 Cordis 运行时。
 
-**[暂缓·缓存]** MVP 规格 §11 曾要求浏览器临时缓存、普通/强制刷新、请求合并与过期提示；后续讨论明确**暂不设计缓存机制**，将该议题交给 Vercel Functions 侧后续处理。此处不把旧规格的浏览器缓存方案当成新的实施指令，也不否认失败状态和数据来源可信度的基本要求。
+**[用户确认·缓存倾向]** 应积极利用缓存以加速用户访问并减少重复、缓慢的 GitHub API 请求。优先调研并利用 Vercel Functions/CDN 托管缓存，具体方案在验证安全性、成本与效果后确定。旧 MVP 规格 §2.2/§11 的浏览器缓存/“无服务端共享缓存”表述与 Vercel Runtime Cache 能力存在差异；见 [Vercel Functions 缓存调研](./vercel-functions-cache-research.md)，待修订旧规格。
 
 **[实现待定而非架构空白]** 根配置完整 Schema、成员索引字段、劳动 YAML 的解析实现、项目索引文件布局、Commit 分页与增量发现、标签同步的部分失败重试细节、频道初始化交互及实际 GitHub/Vercel 集成验收，均属于后续开发/专项验证，不要求在 Architecture Map 中先选择技术实现。
 
@@ -218,7 +218,7 @@ flowchart TB
 ### 尚未确定的技术边界
 
 - **[已确认]** Functions 侧不运行 Cordis；**[待决]** API 端点在仓库中的组织、所属业务插件如何维护服务端处理逻辑，以及哪些纯领域代码适合跨运行时复用。
-- **[已验证]** Cordis 已提供必需服务注入、依赖卸载与生命周期；**[待决]** 具体公共服务接口、路由、跨运行时与 UI 扩展点归属；**[暂缓]** 缓存/刷新内部机制，不纳入当前架构调查。
+- **[已验证]** Cordis 已提供必需服务注入、依赖卸载与生命周期；**[待决]** 具体公共服务接口、路由、跨运行时与 UI 扩展点归属。**[缓存倾向]** GitHub 数据加速优先由 Vercel CDN/Functions 承担；见 [独立调研](./vercel-functions-cache-research.md)，具体参数待验证。
 - **[约束]** Playground 可按业务功能隔离验收；共享依赖可以提供真实实现或受控替身，必须区分模拟路径与真实 GitHub/Vercel 集成验证。
 - **[待验证]** 实际 Vercel 部署、会话失效、权限与安装范围、多仓库访问、GitHub 限流及并发修改。
 
@@ -238,7 +238,7 @@ flowchart TB
 
 **[待研究]** 调查如何在不预设全局 Installation ID 的前提下，依据用户授权与目标仓库确认对应安装实例、仓库授权范围及权限变化；处理多安装、不同用户/组织以及撤销等边界。调研与验证任务见 [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；当前文档**不预设技术解法**。
 
-**[暂缓]** 缓存不是本轮议题。缓存相关问题暂交由 Vercel Functions 一侧后续处理，不在当前架构文档中确定缓存机制、刷新间隔或浏览器缓存策略；MVP 既有产品规格中的缓存细节后续按实际实现同步对齐。
+**[用户确认·缓存积极采用]** 对 GitHub 数据的重复读取优先使用 Vercel 托管缓存加速；CDN Cache 可缓存公共完整响应，Runtime Cache 可让 Function 复用区域性临时数据。两者适用性与安全边界见 [独立调研](./vercel-functions-cache-research.md)。缓存机制、TTL 和失效效果待真实端点验证。
 
 ### P4 身份与用户写入边界（机制已确定；真实环境验证待完成）
 
@@ -254,6 +254,16 @@ flowchart TB
 
 **[待验证]** 至少按实际运行环境检查：OAuth 成功/失败/重放、回调和 Cookie 条件、用户权限拒绝、安装范围变化/撤销、跨仓库或 PR 目标、GitHub 写入 actor、会话过期和重新登录、写入冲突与不确定结果、安全来源校验、Vercel 多实例及配置/密钥轮换。细化用例属于 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 与具体写入功能的验收；**动态 Installation 发现不在 P4 重复研究**。
 
+### P3b Vercel Functions 缓存倾向
+
+**[用户已确认]** 应积极采用适当缓存，优先缩短用户访问已接入公开项目、Issue 和配置的等待时间，并减少对 GitHub API 的重复慢速访问。此方向替代此前“暂缓缓存”的讨论优先级，但不意味着将所有接口设置为公共可缓存。
+
+**[官方能力·已调研]** Vercel CDN Cache 缓存与用户身份无关的完整响应；Runtime Cache 通过 `@vercel/functions` 的 `getCache()` 缓存 Function 使用的公共数据，支持 TTL、Tag 失效且按区域隔离。它们不需要新增自建 Redis、常驻 Worker 或在线业务数据库。Runtime Cache 仍然是**服务端共享的临时缓存**。来源、适用范围、现有 `no-store` 代码现状和验证清单见 **[Vercel Functions 缓存能力调研](./vercel-functions-cache-research.md)**。
+
+**[安全与一致性边界]** 不将用户 OAuth 会话、令牌、登录态相关权限结果或写入响应混入跨用户 CDN/Runtime Cache。公开仓库不等于所有响应天然公共；按实际数据是否与身份无关、安全的仓库范围判定来区分。GitHub 仍是权威数据源，写入后失效和外部更新造成的过期窗口需要实际验证；缓存不能替代安装/权限校验。
+
+**[规格差异·待同步]** 旧 MVP 规格 §2.2/§11 的“无服务端共享缓存”以及浏览器缓存安排与新的倾向存在差异：允许评估采用 **Vercel 托管 Runtime Cache**，并不等于批准自建数据库、Redis 或后台持续同步。应在产品规格更新时显式处理；当前不冻结缓存时间、键、Tag、费用目标和刷新机制。
+
 ## 6. 第一批未完成拼图
 
 | 决策 / 实验槽位 | 当前问题 | 本轮处理方式 |
@@ -261,7 +271,7 @@ flowchart TB
 | **P1 全栈插件与 Serverless 运行边界** | **已确认**：浏览器 Cordis 插件 + 普通 Vercel Functions；业务插件是完整逻辑功能单元，不要求两端各运行 Cordis；部署统一。**待细化**：服务端文件归属和跨运行时代码布局 | **已填写第 2 节**；不建立第二套服务端插件运行时 |
 | **P2 平台核心与插件的归属** | **已确认**：最小启动/装配核心不是插件；UI 宿主、GitHub 接入/数据等基础能力及各业务闭环通过 Cordis 插件提供；Playground 是验收入口 | **已填写第 4 节**；不再将原则性划分作为待批准问题 |
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
-| **P3 GitHub 数据访问** | **已确认**：GitHub App 安装授权即项目接入；有登录态使用用户 OAuth 授权路径，无登录态另行读取，暂不讨论差异。**待研究**：不写死 Installation ID 的动态安装与仓库定位 | [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18) · 第 5 节；缓存暂缓，由 Functions 侧后续处理 |
+| **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
 | **P5 项目领域模型与配置** | **已核对**：规格 §5–10 的配置 Namespace 三态、Label 同步、看板/频道规则、Repo/CardItem/Asset/Labour/成员来源语义；**已补充**看板视图新约束。**待落实**：具体 Schema、插件接口和旧规格冲突同步 | 第 3 节 **P5a–P5e** 已填写；不再将现有规则作为待决问题 |
 | P6 AI 开发与检查机制 | 项目级规则、技能引用、CI 和 Review 如何配合？ | 先确立架构，再变成可执行规范 |
