@@ -240,6 +240,20 @@ flowchart TB
 
 **[暂缓]** 缓存不是本轮议题。缓存相关问题暂交由 Vercel Functions 一侧后续处理，不在当前架构文档中确定缓存机制、刷新间隔或浏览器缓存策略；MVP 既有产品规格中的缓存细节后续按实际实现同步对齐。
 
+### P4 身份与用户写入边界（机制已确定；真实环境验证待完成）
+
+**[约束·用户确认 / MVP §3]** GitHub App 安装并授予仓库权限是项目接入行为；**用户 OAuth 授权**是具体用户的身份与交互式写入凭据，两者不是同一个许可。交互式创建 Issue、评论、修改受管 Label、配置写入均应使用**用户授权身份**并遵守 GitHub 用户及 App 的有效权限；不得以 Installation Token 替代用户身份绕过拒绝。浏览器不得持有 App 私钥、Client Secret 或可直接读取的用户令牌。未登录用户可以浏览已接入的公开项目，但不具备用户写入会话。
+
+**[现状·OAuth 与会话]** `api/github-login.mjs`、`github-callback.mjs`、`_oauth.mjs` 实现了 GitHub App OAuth 授权码流程、`state` 校验、PKCE S256、服务端 code 交换，以及 AES-GCM 密封的 `__Host-` 前缀 HttpOnly / Secure / SameSite=Lax Cookie。当前会话保存有时限的用户访问令牌（最长 8 小时），**不保存 Refresh Token**；`api/github-session.mjs` 提供不暴露令牌的登录态查询。上述是当前代码策略，不应写成已验证的多设备刷新、密钥轮换或即时吊销能力。
+
+**[现状·受控用户写入]** `api/_issue-interaction.mjs` 对写入要求 POST、JSON、受控请求来源、用户会话、输入限制和目标仓库的 App 安装范围检查。`api/github-issue-create.mjs` 使用该用户令牌创建 Issue；`api/github-issue-comment.mjs` 先读取目标并排除 Pull Request，再以该用户令牌发表评论。失败时返回可识别的错误或提醒核实结果，避免网络超时后盲目重复创建。当前仓库范围校验仍依赖 **固定 `GITHUB_INSTALLATION_ID`**，它是已跑通的测试前提，动态定位方案单独见 [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)。
+
+**[规格已定义·未完整实现]** 修改看板分列 Label、初始化/同步 Label 定义和更新 `labourchain.config.yaml` 仍需实际实现。已确定的约束包括：只修改配置允许的受管 Namespace；不覆盖 Issue 的其他 Label；配置文件写入需要检查当前 SHA 与用户权限；跨多个 GitHub 请求的状态修改/同步**不是原子事务**，冲突与部分失败必须显式呈现，不得在 UI 上假装持久成功。相关领域约束见 P5b–P5c。
+
+**[研究建议 ≠ 已验收实现]** [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 与 [授权研究文档](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/github-app-user-write-auth-research.md) 列出会话安全、Origin/CSRF、授权撤销、访问控制、并发冲突、错误恢复等验证建议；其研究草稿在 2026-10-21 明确尚未进行真实 API 写入。当前代码已经实现其中部分防护，**但静态的 `X-LabourChain-Write` 请求头与 Origin 检查不可自动等同于独立的会话绑定 CSRF 令牌验收通过**；不得将现有代码或研究草稿冒充完整端到端安全测试。
+
+**[待验证]** 至少按实际运行环境检查：OAuth 成功/失败/重放、回调和 Cookie 条件、用户权限拒绝、安装范围变化/撤销、跨仓库或 PR 目标、GitHub 写入 actor、会话过期和重新登录、写入冲突与不确定结果、安全来源校验、Vercel 多实例及配置/密钥轮换。细化用例属于 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 与具体写入功能的验收；**动态 Installation 发现不在 P4 重复研究**。
+
 ## 6. 第一批未完成拼图
 
 | 决策 / 实验槽位 | 当前问题 | 本轮处理方式 |
@@ -248,7 +262,7 @@ flowchart TB
 | **P2 平台核心与插件的归属** | **已确认**：最小启动/装配核心不是插件；UI 宿主、GitHub 接入/数据等基础能力及各业务闭环通过 Cordis 插件提供；Playground 是验收入口 | **已填写第 4 节**；不再将原则性划分作为待批准问题 |
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问** | **已确认**：GitHub App 安装授权即项目接入；有登录态使用用户 OAuth 授权路径，无登录态另行读取，暂不讨论差异。**待研究**：不写死 Installation ID 的动态安装与仓库定位 | [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18) · 第 5 节；缓存暂缓，由 Functions 侧后续处理 |
-| P4 身份与写操作边界 | 用户会话、写操作权限与幂等如何验收？（Installation 动态定位单列 #18） | 复用 #5 研究，补真实验证 |
+| **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
 | **P5 项目领域模型与配置** | **已核对**：规格 §5–10 的配置 Namespace 三态、Label 同步、看板/频道规则、Repo/CardItem/Asset/Labour/成员来源语义；**已补充**看板视图新约束。**待落实**：具体 Schema、插件接口和旧规格冲突同步 | 第 3 节 **P5a–P5e** 已填写；不再将现有规则作为待决问题 |
 | P6 AI 开发与检查机制 | 项目级规则、技能引用、CI 和 Review 如何配合？ | 先确立架构，再变成可执行规范 |
 
