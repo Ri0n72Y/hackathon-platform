@@ -90,7 +90,7 @@ flowchart TB
 | GitHub Data Access | 仓库 / Issue / 评论 / Commit 的读取与错误处理；缓存暂缓 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] 固定 Installation ID 的测试链路；动态仓库定位 [待研究：#18] |
 | Project / Repository | 仓库级页面、入口和挂载状态 | 当前仓库选择界面 | [方向]；挂载流程未完成 |
 | Config & Label Management | 配置解析、校验、Label 初始化与同步 | MVP 规格中的数据契约 | [方向] 未实现 |
-| Issue Board | Issue → CardItem、状态解析、看板和状态变更 | 当前为 Issue 列表与手动创建 / 评论 | [方向] 未实现完整看板 |
+| Issue Board | Issue → CardItem、按视图可选 Label Namespace 分列、置顶、Filter/URL 视图与本地手动排序；受控标签变更 | 当前为 Issue 列表与手动创建 / 评论 | [约束·用户补充] 视图规则已明确；[现状] 完整看板未实现 |
 | Channels | 频道定位、展示及 Issue 评论 | MVP 规格定义 | [方向] 未实现 |
 | Labour Records | 解析 Commit / YAML 评论、关联 Asset | MVP 规格定义 | [方向] 未实现 |
 | Team / Members | 可选 `team-index/` 成员信息 | MVP 规格定义 | [方向] 未实现 |
@@ -101,10 +101,24 @@ flowchart TB
 
 ### 3.1 插件边界的初步判断（已确认的原则，不是拆包清单）
 
-- **合适的边界：** 例如“Issue 看板”能够加载任务、按状态展示并触发受控状态变更；可以在 Playground 中提供测试仓库数据与受控写入模拟，检验完整交互路径。
+- **合适的边界：** 例如“Issue 看板”能够加载任务、按当前视图指定的 Label Namespace 分列并触发受控标签变更；可以在 Playground 中提供测试仓库数据与受控写入模拟，检验完整交互路径。
 - **太细：** 仅为 `parseStatusLabel()` 或单个按钮包装 Cordis 插件；应优先作为业务插件内部的普通函数或组件。
 - **太大：** 一个插件同时独立实现看板、频道、成员和劳动记录等多个完整业务领域；应检查其是否含有多个可单独验收的业务闭环。
 - **独立验收 ≠ 零依赖：** 共享身份、数据访问等能力可以以真实实现或测试替身提供；插件不应为了 Playground 而复制整套平台。模拟验收与真实 GitHub/Vercel 集成验证应明确区分。
+
+### P5a 看板视图、置顶与手动排序（已确认的视图契约）
+
+以下为用户从看板专项讨论补充的**[约束·用户确认]**，属于 Issue Board 功能的视图规则；不构成平台级通用过滤器或书签框架。
+
+- **分列规则：** 当前看板视图可以配置分列使用的 GitHub Label **Namespace**；不再将 `status:*` 写死为所有看板视图的唯一分列依据。所选 Namespace 决定 Issue 显示在哪一列；具体支持哪些 Namespace 及其有效值仍受仓库配置和业务规则约束。
+- **全局置顶：** Issue 添加特殊 `pinned` Label 后，始终排在其所属列顶部，**不受当前视图分列 Namespace 的影响**。它改变列内优先级，不代替分列所属关系；即使使用手动排序模式，`pinned` 的置顶语义也成立。
+- **可共享的 Filter 视图：** 普通视图的筛选/排序规则通过 **URL Query Parameters** 表达；修改 Filter 应同步更新 URL，分享该 URL 可恢复该视图规则。它表达视图而非 GitHub 上的额外任务排序字段。
+- **本地手动排序：** 用户拖动调整**显示顺序**后，当前 Filter **直接失效并清空**，界面显示「**手动排序**」；顺序只保存在本地，不写入 GitHub，**该手动排序视图暂不支持分享**。不能将不含 Filter 的 URL 宣称为手动排序的可复现链接。
+- **常用视图：** 允许把常用 Filter/视图定义保存到仓库配置目录（如 `configs/`）或单独书签文件，由网页加载。**具体文件位置与格式待确定**；不将本地手动排序隐式转为可分享配置。
+
+**[边界与待细化]** `pinned` 是 Issue 上的 GitHub Label，属于可被其他用户看到的仓库数据；Filter、URL 表达的是视图配置；本地手动顺序属于浏览器端个人显示状态。**跨列拖动**是否触发 GitHub Label 变更与**同列手动排序**不是一回事，仍需结合选定 Namespace 与写入权限验证确定。手动排序清空 Filter 后，分列 Namespace 的交互保留规则、刷新行为和同为 `pinned` 的卡片之间如何排序，均不在本轮擅自固定。
+
+**[规格差异·待同步]** 当前 [MVP 产品规格](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/LabourChain-MVP-Product-Spec.md) §7 仍以 `status:*` 为固定看板列、§7.3 仍写“筛选/排序偏好保存在本地”。这些表述与新确认的「可选 Namespace 分列、URL Filter、手动排序清空 Filter」并不完全一致。此处先记录新决策，旧规格原文及相关测试应在看板落地前按确认后的语义另行对齐。
 
 ## 4. 平台核心与插件归属（P2 已确认）
 
@@ -173,7 +187,7 @@ flowchart TB
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问** | **已确认**：GitHub App 安装授权即项目接入；有登录态使用用户 OAuth 授权路径，无登录态另行读取，暂不讨论差异。**待研究**：不写死 Installation ID 的动态安装与仓库定位 | [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18) · 第 5 节；缓存暂缓，由 Functions 侧后续处理 |
 | P4 身份与写操作边界 | 用户会话、写操作权限与幂等如何验收？（Installation 动态定位单列 #18） | 复用 #5 研究，补真实验证 |
-| P5 项目领域模型与配置 | Repo / CardItem / Channel / Labour / Asset 的契约如何落地？ | 按首个真实功能分段细化 |
+| P5 项目领域模型与配置 | Repo / CardItem / Channel / Labour / Asset 的契约与归属待细化；**已补充**看板可选 Namespace、`pinned`、URL Filter 与本地手动排序规则 | 第 3 节 P5a 已记录视图契约；领域数据边界与配置读写仍待讨论 |
 | P6 AI 开发与检查机制 | 项目级规则、技能引用、CI 和 Review 如何配合？ | 先确立架构，再变成可执行规范 |
 
 ## 7. AI 开发资料的正确层级
