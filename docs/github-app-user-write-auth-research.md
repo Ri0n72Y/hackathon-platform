@@ -1,5 +1,7 @@
 # GitHub App 用户授权与安全写入链路研究
 
+> 历史研究（2026-10-21）：保留原文供追溯。当前仓库已有 React/Cordis 与 OAuth、Issue 读写实验，文中“无工程”等状态不再代表现状。更新后的范围、架构、权限及会话建议请见 [Issue #1 技术方案](./mvp-technical-plan.md)。本文不是当前实现或真实部署的验收证据。
+
 状态：Research draft；2026-10-21。关联：#5、#1。**未创建测试 GitHub App，未进行真实 API 写入。**
 本报告将「官方文档验证」「Connector 行为观察」「工程建议」「待 PoC」分开。遵守 MVP：React + Cordis、Vercel 静态站与 Functions、GitHub 公开仓库、只处理 Issue、不依赖在线业务数据库。正式实施前需核对未提供的《SKILL - team v3.md》。
 

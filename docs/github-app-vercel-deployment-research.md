@@ -1,5 +1,7 @@
 # GitHub App 双身份认证与 Vercel Functions 部署调查
 
+> 历史研究（2026-10-21）：保留原文供追溯。当前仓库已有 React/Cordis 与 OAuth、Issue 读写实验，文中“无工程”等状态不再代表现状。更新后的范围、架构、权限及会话建议请见 [Issue #1 技术方案](./mvp-technical-plan.md)。本文不是当前实现或真实部署的验收证据。
+
 - 日期：2026-10-21
 - 关联任务：[Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5)、[Issue #1](https://github.com/Ri0n72Y/hackathon-platform/issues/1)
 - 性质：部署调查 + 文档内最小实验代码；不包含工程实现。
