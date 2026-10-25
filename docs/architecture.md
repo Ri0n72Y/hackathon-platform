@@ -11,13 +11,17 @@
 - **[方向]** 当前采用的讨论方向，具体定义和验收标准尚待确定。
 - **[待决]** 需要用户与 Architecture Steward 讨论后确定。
 - **[待验证]** 需要代码实验、部署或专项研究支持，不能仅凭设计推断。
+- **[规格已定义]** MVP 产品规格 Draft 0.1 已写明的领域语义；不是实现已完成或额外用户批准。
+- **[规格差异]** 旧规格与后续用户明确决策存在差异；保留可追溯依据，待产品规格同步。
+- **[待研究]** 已明确研究目标但尚无验证结论；可由专项 Issue 跟踪。
+- **[暂缓]** 当前不研究或实施；与未解决的阻塞问题分开记录。
 - **[后续]** 本轮不需要细化，不因此提前搭建基础设施。
 
 ## 1. 产品及运行边界
 
 **[约束]** 平台面向黑客松团队和开源协作社区。MVP 通过公开 GitHub 仓库提供项目发现、Issue 看板、频道讨论和基础劳动记录。React 负责 UI；Cordis 负责插件及服务组织；Vercel 承载网页和 Functions；GitHub App 提供用户授权与仓库访问；GitHub 仓库是主要业务数据源；不建立传统在线业务数据库；保留 LabourChain 协议未来接入位置。
 
-**[约束]** MVP 不包括私有仓库、PR 看板、跨平台 Git 适配器、持续后台同步、常驻 Worker、完整 LabourChain 协议或价值计算。产品规格所描述的 `labourchain.config.yaml`、`status:*`、`channel:*`、`CardItem`、`Asset` 和劳动记录属于已提出的产品/数据契约；不是已实现的代码模块。
+**[约束]** MVP 不包括私有仓库、PR 看板、跨平台 Git 适配器、持续后台同步、常驻 Worker、完整 LabourChain 协议或价值计算。细粒度权限、私有频道、独立 Thread、完整成员履历、声誉/贡献排名及完整异常诊断界面同样不在 MVP 范围；无效数据诊断界面可后置。产品规格所描述的 `labourchain.config.yaml`、`status:*`、`channel:*`、`CardItem`、`Asset` 和劳动记录属于已提出的产品/数据契约；不是已实现的代码模块。
 
 **[约束·用户确认]** 将平台设计为**全栈业务功能插件的组合**。插件围绕一个完整、可验收的业务功能，而不是单个函数、组件或 API 操作；也不应同时吞并多个复杂且完整的业务模块。插件可以按需包含 UI、Cordis 服务、领域逻辑和服务端 Function，但前后端各自的代码与运行职责须保持可辨识，不能混成不可维护的大模块。
 
@@ -57,13 +61,13 @@ flowchart TB
     Auth["OAuth / 会话 / 权限检查"]
     Ops["受控 GitHub 写入 / 配置同步 / 必要读取"]
   end
-  Features -->|"公开数据读取：具体路径待决"| GH["GitHub API"]
+  Features -.->|"已接入仓库的数据读取（不同登录态的路径暂不展开）"| GH["GitHub API"]
   Features -->|"授权与变更"| Auth
   Features -->|"受控操作"| Ops
   Auth --> GH
   Ops --> GH
   GH <--> Repos["公开 GitHub 仓库 · 权威数据"]
-  Future["未来 LabourChain 协议集成：接口位置待决"] -.-> Runtime
+  Future["未来 LabourChain 协议集成：接口位置待决"] -.-> Features
   Future -.-> Repos
 ```
 
@@ -88,12 +92,12 @@ flowchart TB
 | Playground / Acceptance Harness | 按业务场景单独装配插件并观察可验收行为，可按需使用可控依赖 | 现有 `apps/playground/` 目前是整体原型入口 | [约束] 需要插件级验收；场景设计 [待决] |
 | GitHub Identity & Access | App OAuth、会话、权限与安装范围校验 | `api/github-login.mjs`、`github-callback.mjs`、`github-verify.mjs` | [现状] 局部实现；完整安全验收 [待验证] |
 | GitHub Data Access | 仓库 / Issue / 评论 / Commit 的读取与错误处理；缓存暂缓 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] 固定 Installation ID 的测试链路；动态仓库定位 [待研究：#18] |
-| Project / Repository | 仓库级页面、入口和挂载状态 | 当前仓库选择界面 | [方向]；挂载流程未完成 |
-| Config & Label Management | 配置解析、校验、Label 初始化与同步 | MVP 规格中的数据契约 | [方向] 未实现 |
+| Project / Repository | 仓库级根对象、已授权安装范围、项目视图及仓库配置读取 | 当前仓库选择界面 | [规格已定义] 仓库及页面语义；[已确认] 安装授权即接入；流程待实现 |
+| Config & Label Management | 根配置解析、Namespace 三态校验、仅对受管 Issue 标签进行同步 | MVP 规格 §5–6 | [规格已定义] 管理与清理边界；[现状] 未实现完整同步 |
 | Issue Board | Issue → CardItem、按视图可选 Label Namespace 分列、置顶、Filter/URL 视图与本地手动排序；受控标签变更 | 当前为 Issue 列表与手动创建 / 评论 | [约束·用户补充] 视图规则已明确；[现状] 完整看板未实现 |
-| Channels | 频道定位、展示及 Issue 评论 | MVP 规格定义 | [方向] 未实现 |
-| Labour Records | 解析 Commit / YAML 评论、关联 Asset | MVP 规格定义 | [方向] 未实现 |
-| Team / Members | 可选 `team-index/` 成员信息 | MVP 规格定义 | [方向] 未实现 |
+| Channels | 有效频道 Issue 选择、评论与按配置启用的 Wishlist 展示 | MVP 规格 §8 | [规格已定义] 频道语义；[现状] 未实现 |
+| Labour Records | Commit Message / YAML 评论转劳动记录、Commit Asset 引用与去重显示 | MVP 规格 §9.3–9.4 | [规格已定义] 来源与关联语义；[现状] 未实现 |
+| Team / Members | 可选 `team-index/` 成员索引，允许没有 GitHub 账号的参与者 | MVP 规格 §10 | [规格已定义] 最小结构；字段契约后置，未实现 |
 | Discovery / Index | 从公共索引进入项目、项目卡片 | MVP 规格定义；#4 后置 | [方向] 未实现；具体索引契约 [待决] |
 | LabourChain Integration | 后续正式协议集成边界 | MVP 明确不运行完整协议 | [后续] 只预留演进位置 |
 
@@ -119,6 +123,64 @@ flowchart TB
 **[边界与待细化]** `pinned` 是 Issue 上的 GitHub Label，属于可被其他用户看到的仓库数据；Filter、URL 表达的是视图配置；本地手动顺序属于浏览器端个人显示状态。**跨列拖动**是否触发 GitHub Label 变更与**同列手动排序**不是一回事，仍需结合选定 Namespace 与写入权限验证确定。手动排序清空 Filter 后，分列 Namespace 的交互保留规则、刷新行为和同为 `pinned` 的卡片之间如何排序，均不在本轮擅自固定。
 
 **[规格差异·待同步]** 当前 [MVP 产品规格](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/LabourChain-MVP-Product-Spec.md) §7 仍以 `status:*` 为固定看板列、§7.3 仍写“筛选/排序偏好保存在本地”。这些表述与新确认的「可选 Namespace 分列、URL Filter、手动排序清空 Filter」并不完全一致。此处先记录新决策，旧规格原文及相关测试应在看板落地前按确认后的语义另行对齐。
+
+### P5b 配置与 Label 管理边界（MVP 规格 §5–6 已定义）
+
+**[规格已定义]** 根目录的 \`labourchain.config.yaml\` 是仓库级配置入口，负责有效标签、频道、显示方式和**由平台管理的 Namespace**。浏览器负责读取/解析用于展示的配置；服务端 Function 对写入、配置或标签同步须重新校验当前配置与 GitHub 用户权限。确切 Schema 和字段名尚未冻结，**不要因此重议下面已确定的语义**。
+
+| 配置中某 Namespace 的状态 | 平台行为 |
+| --- | --- |
+| 不存在 | 不归平台管理，不检查也不修改；看板亦不能选择其作为分列 Namespace |
+| 存在，且有效标签非空 | 纳入受管范围，仅配置声明的标签值有效；看板选择分列时使用该 Namespace 的有效标签 |
+| 存在，但有效标签列表为空 | 仍在受管范围，但没有有效分列值；同步时清理 Issue 上属于该 Namespace 的标签 |
+
+**[规格已定义]** 匹配以**完整命名空间前缀**为准，\`foo:\` 不等于 \`foobar:\`。删除整个 Namespace 配置意味着**停止管理且不自动清理**；保留配置但将列表设为空意味着**清理受管 Issue 上对应 Namespace 的标签**。这是两个不同的操作，不得合并为一个“删除标签”行为。
+
+**[规格已定义]** 首次接入或配置变更时的 Label 同步由受控 Vercel Function 执行：读取仓库配置与状态、验证配置和用户权限、创建缺失的仓库级 Label 定义、检查 Issue 标签并清理受管 Namespace 下的无效值。**不删除仓库级 Label 定义、不主动处理 PR、不触碰未声明受管的 Namespace**。一轮同步包含多次 GitHub API 调用，**不是原子事务**；必须保留逐项失败信息与安全重试边界。
+
+**[已确认·衔接]** GitHub App 安装并授予仓库访问权即完成平台接入，不附加第二次业务“绑定”。安装权限、项目接入与上述配置/Label 初始化属于不同责任；**不能因为已经接入就假定配置有效或同步已经成功**。动态 Installation 定位另由 [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18) 研究。
+
+**[边界]** \`pinned\` 是另行确认的特殊置顶标签，独立于当前分列 Namespace；它的创建、权限和与受管 Namespace 的关系需在具体写入实现中按既有权限约束核对，不将其当作可选择的分列 Namespace。
+
+### P5c 看板与频道的业务判定（MVP 规格 §7–8 已定义）
+
+**[规格已定义·看板]** 默认读取 **Open Issue**，Closed 默认不展示；用户主动打开“显示已关闭”后再分页读取 Closed，不强制一次获取全部历史 Issue。GitHub 的 Issue API 可能混入 PR，MVP 只处理 Issue。GitHub 的 Open/Closed 生命周期状态与业务 Namespace 标签是**不同的维度**。无效数据可供诊断，但完整诊断 UI 不是 MVP 的前置条件。
+
+**[规格已定义 + 后续决策]** 原规格规定普通看板卡片必须**恰好拥有一个有效的 \`status:*\` 标签**，否则不展示；\`status:archived\` 默认隐藏在独立归档列表中。后续已确认“每个视图可选择配置中声明的 Namespace 分列”，所以**唯一有效分列标签**的判定应针对**当前选择的受管 Namespace**来理解；这属于对原固定 \`status\` 规则的推广，**具体无效卡片和归档跨 Namespace 行为尚未单独定义，不得假装旧文档已经覆盖**。跨列拖动引发的写入行为同样待落实；不得将本地手动排序误写成 GitHub Label 变更。
+
+**[规格已定义·频道]** 每个频道由一个符合配置的 **Open Issue** 表示；必须恰好具有一个有效 \`channel:*\` 标签。没有有效 Issue → 空状态；出现多个候选 → 选择**创建时间最新**的有效 Issue；具有多个 \`channel:*\` 标签的 Issue 归属无效，不在频道视图展示。频道讨论直接使用该 Issue 的评论，不创建独立 Thread 对象。
+
+**[规格已定义]** Wishlist 是默认的 \`channel:wishlist\`，适用相同的选择与有效性规则，只在展示方式上特殊；删除对应频道配置后不再显示 Wishlist 专用视图。一个 Issue 可同时符合看板与频道规则，并显示在不同视图中，**不需要为此复制 GitHub Issue 或创建第二种实体**。频道的初始化与创建交互仍属于实施细节。
+
+**[规格已定义·用户操作]** 创建 Issue、评论和修改标签须遵守 GitHub 用户自身的权限；GitHub 写入失败时 UI 不得将未成功操作永久显示为完成，应呈现失败并允许恢复/重试。
+
+### P5d 核心领域对象与来源关系（MVP 规格 §9–10 已定义）
+
+| 对象 | 已确定身份与来源语义 | 不应预设 |
+| --- | --- | --- |
+| **Repo** | 仓库级根对象；MVP 仅实现 GitHub 类型，但领域身份不能把未来所有仓库类型都绑定为 GitHub 特定字段 | 多 Git 平台适配器或完整劳动链仓库协议 |
+| **CardItem** | 标准任务卡片**引用源 Issue**，不建立完整 Issue 快照；允许预留少量 \`patch?: Partial<CardItem>\` | 完整 Patch 系统、以本地 Patch 静默覆盖 GitHub 权威字段 |
+| **Asset** | 表示实际文件/资产；MVP 至少覆盖 GitHub Commit Asset，可由仓库与 Commit SHA 定位，保留原始地址、作者、提交者、时间及消息等来源信息 | 提前要求所有 Asset 都有 Commit，或实现非 Git 适配器 |
+| **Labour Record** | 来源于 Commit Message 或结构化 Issue 评论；评论记录能够关联多个 Commit Asset | 必须关联 Commit、自动劳动价值计算或自动推算主观估时 |
+| **Team Member** | 可选 \`team-index/\`：每人一个 Markdown，另有总 \`index\`；成员可无 GitHub 账号，也可为 Bot、设计、运营等贡献者 | 完整电子简历 Schema、以 GitHub 账号作为唯一成员身份 |
+
+**[规格已定义·结构化劳动记录]** 有效记录来自 Issue 评论中**独立的 \`yaml\` 代码块**，顶层键为 \`labour\`；一条有效评论对应一条劳动记录。字段：\`work\`（必填，可多行）、\`hr\`（必填，以 \`~0.5h\`、\`~1h\` 等 **0.5 小时步进的主观估计**表示）、\`commits\`（可选，多 SHA）、\`outcome\`（可选）、\`start-end\`（可选，\`start\`/\`end\` 使用 RFC 3339 时间戳）。未填写起止时间时实际劳动发生时间保持未知；**评论创建时间是发表时间，不能充当劳动发生时间**。无 Commit 的工作记录仍有效。
+
+**[规格已定义·展示与关联]** 评论 ID、作者、创建时间、所属 Issue 使用 GitHub 原始元数据，无需劳动者手填；有效结构化评论转为 Labour Record 展示，不再重复作为普通讨论；未通过校验的评论仍按普通评论显示。一个记录可关联多个 Commit；被有效结构化记录引用的 Commit 不再生成独立的基础 Commit Message 劳动记录。未被引用的 Commit 可以形成**信息不完整**的基础记录，不虚构时长或成果。同一 Commit 被多个结构化记录引用时，不自动合并，标为无效或待处理，避免重复展示；原始来源必须可追溯。
+
+**[架构映射]** 以上是**业务模型与来源契约**，并不要求在 Core 中建立一个包揽 Repo、看板、频道、劳动记录和成员的统一业务服务。每个业务插件处理自己的领域转换；确需跨插件复用的原始来源访问或纯解析规则，再以明确公共服务或普通 TypeScript 逻辑承载。业务模型的最终类型定义、Schema 及资源路由仍需随首个可验收功能落地。
+
+### P5e MVP 规格中已明确的其他边界（§2–4、§11–14）
+
+**[规格已定义·身份]** 仓库接入发起者须具有相应的 Owner / Maintainer 权限（实际 GitHub App 安装/授权能力以 GitHub 结果为准）；普通交互式写入使用授权用户令牌，并接受 GitHub 用户权限及 App 授权范围限制；匿名用户可以浏览**已经接入平台的公开项目**，未安装授权的任意 GitHub 仓库不因此成为平台项目。服务器秘密不能进入浏览器。
+
+**[规格已定义·项目入口]** 规格曾定义首页使用公共索引仓库驱动项目发现，项目详情拥有概览、看板、频道、劳动记录、成员视图；板和频道属于独立视图，同一 Issue 可以在两边出现。**发现页、索引格式与推荐策略属于独立产品工作**，本地图仅标其边界，不在当前架构讨论中扩大范围。
+
+**[已确认·实现方式]** 浏览器使用 React + Cordis；Vercel Functions 处理需要受控服务器环境的 OAuth、校验和 GitHub 写入。配置解析、Namespace 匹配、状态过滤、频道选择等领域计算优先使用易测试的纯 TypeScript 逻辑；不因预留未来能力而创建多平台适配层或服务端 Cordis 运行时。
+
+**[暂缓·缓存]** MVP 规格 §11 曾要求浏览器临时缓存、普通/强制刷新、请求合并与过期提示；后续讨论明确**暂不设计缓存机制**，将该议题交给 Vercel Functions 侧后续处理。此处不把旧规格的浏览器缓存方案当成新的实施指令，也不否认失败状态和数据来源可信度的基本要求。
+
+**[实现待定而非架构空白]** 根配置完整 Schema、成员索引字段、劳动 YAML 的解析实现、项目索引文件布局、Commit 分页与增量发现、标签同步的部分失败重试细节、频道初始化交互及实际 GitHub/Vercel 集成验收，均属于后续开发/专项验证，不要求在 Architecture Map 中先选择技术实现。
 
 ## 4. 平台核心与插件归属（P2 已确认）
 
@@ -187,12 +249,12 @@ flowchart TB
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问** | **已确认**：GitHub App 安装授权即项目接入；有登录态使用用户 OAuth 授权路径，无登录态另行读取，暂不讨论差异。**待研究**：不写死 Installation ID 的动态安装与仓库定位 | [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18) · 第 5 节；缓存暂缓，由 Functions 侧后续处理 |
 | P4 身份与写操作边界 | 用户会话、写操作权限与幂等如何验收？（Installation 动态定位单列 #18） | 复用 #5 研究，补真实验证 |
-| P5 项目领域模型与配置 | Repo / CardItem / Channel / Labour / Asset 的契约与归属待细化；**已补充**看板可选 Namespace、`pinned`、URL Filter 与本地手动排序规则 | 第 3 节 P5a 已记录视图契约；领域数据边界与配置读写仍待讨论 |
+| **P5 项目领域模型与配置** | **已核对**：规格 §5–10 的配置 Namespace 三态、Label 同步、看板/频道规则、Repo/CardItem/Asset/Labour/成员来源语义；**已补充**看板视图新约束。**待落实**：具体 Schema、插件接口和旧规格冲突同步 | 第 3 节 **P5a–P5e** 已填写；不再将现有规则作为待决问题 |
 | P6 AI 开发与检查机制 | 项目级规则、技能引用、CI 和 Review 如何配合？ | 先确立架构，再变成可执行规范 |
 
 ## 7. AI 开发资料的正确层级
 
-**[方向]** `docs/architecture.md` 将作为项目架构事实、已批准决定和未决问题的入口之一；后续 `AGENTS.md` 可作为简短导航和操作指引，而不是复制整份架构。只有经过明确确认的规则才转入有约束力的规范。
+**[现状]** `main` 已经包含简短的 [`AGENTS.md`](https://github.com/Ri0n72Y/hackathon-platform/blob/main/AGENTS.md)，作为 AI 贡献和协作入口；`docs/architecture.md` 仍是事实、决定及未决架构问题的讨论地图，**不是**因写入草稿便自动生效的项目工程规范。AGENTS.md 不应复制整份地图，尚未确认的具体实现不得提升为强制规则。
 
 `Ri0n72Y/agent-identity` 的资料按用途引用，不视为项目自身规范：
 
