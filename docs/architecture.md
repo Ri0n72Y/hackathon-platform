@@ -217,6 +217,40 @@ flowchart TB
 
 **来源：** [Cordis 服务与 `inject` 教程](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-tutorial/03-services.zh.md)、[生命周期与 effect](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-tutorial/02-lifecycle-and-effects.zh.md)、[React + Cordis 技术指南](https://github.com/Ri0n72Y/agent-identity/blob/main/library/react-cordis.md)。
 
+### P2c 仓库 URL 作用域与项目页面状态流（方案 A 已确认；接口待落实）
+
+**[用户已确认·方案 A]** URL 中的 `owner/repo` 是仓库首页、专注看板和 Issue 详情的数据访问上下文。仓库选择器可以保留在平台入口，但选中仓库应**导航到相应 URL**，而不是用共享数据服务中的唯一可变 `selected` 字段驱动全部页面。明确指定仓库不等于每个仓库必须新建 Cordis Context、插件实例或新的 Repo Context 服务；不提前规定这些实现形式。
+
+**[已确认·Issue #2]** `/` 是平台入口；`/{owner}/{repo}` 为单仓库项目首页（Title/简要介绍 → **限高 Board 预览** → Repo 动态）；`/{owner}/{repo}/kanban` 为信息更完整的独立看板，支持适用的 URL Filter；`/{owner}/{repo}/issues/{number}` 是独立 Issue 详情。首页预览与专注 Kanban 是**同一 Board 功能及来源数据的两种呈现**，不据此建立两个业务插件。页面支持直达、刷新和浏览器前进后退；URL 只定位资源，不代表 App 已安装或用户已获写入权限。Issue #2 早期以固定 `status:*` 描述分列，按本地图 P5a 后续决策应采用**配置中声明且有效的可选 Namespace**，避免恢复旧规则。
+
+**[基于现状的最小职责建议；不冻结接口/包布局]**
+
+| 边界 | 责任 | 不承担 |
+| --- | --- | --- |
+| 页面 / 路由组合 | 从 URL 取当前 `owner/repo`、可选 Issue 编号及视图参数；提供页面与仓库上下文给使用者 | GitHub 权威数据、全局仓库选择状态或最终授权判断 |
+| 共享数据访问（Cordis 服务与受控 Function） | 按**显式仓库标识**读取 Issue、配置等来源数据，管理相应加载/错误状态；在多个业务消费者之间有条件复用 | Board 分列、频道有效性与 UI 局部动画 |
+| 配置判定 | 解析 `labourchain.config.yaml` 并按受管 Namespace 规则提供有效性判定；先考虑纯函数或已有数据能力内部逻辑 | 无需求时另建独立基础插件 |
+| Board 业务插件 | 对选中仓库做 Issue → CardItem、分列与 Filter 投影；复用逻辑服务首页预览和独立 Kanban | 自行判断 GitHub 用户授权、建立独立的 Issue 权威副本 |
+| Channels / 其他业务插件 | 用相同仓库身份访问来源数据，各自解释频道及其他领域规则 | 为共享 Issue 人为复制第二个 GitHub 对象 |
+| React UI Host | 在**唯一 React Root** 中组合、注册和注销业务 UI | 读取 GitHub 或接管业务规则 |
+| 用户写入 Function | 对明确仓库/Issue 的每次写入重新校验会话、安装范围与用户权限；返回权威结果和错误 | 信任 URL 或前端按钮状态为权限依据 |
+
+**[状态流与归属]**
+
+1. **资源身份属 URL。** 路由改变即切换仓库或对象；`/` 的仓库列表仅用于发现/导航，不是所有页面必经的数据来源。
+2. **来源状态按仓库区分。** 数据能力区分不同 `owner/repo` 的读取与进行中的请求，不能让 A 仓库较晚返回的响应覆盖 B 仓库的页面；保留既有 `revision` 防竞态或使用请求取消均可，具体订阅 API 和驻留缓存范围待实现时选定。
+3. **领域状态由业务解释。** Board 使用来源 Issue 与有效配置生成列和卡片；缺配置/配置无效、加载中、无匹配 Issue、未授权、读取失败是不同的界面情况，不能一律作为“没有卡片”。
+4. **可恢复的视图条件属 URL。** 首页看板预览和 Kanban 之间继承适用的 Namespace / Filter 等查询条件（P5a、Issue #2）。同列手动顺序仍是本地不可分享的 UI 状态；弹窗、编辑草稿及视觉交互属于组件局部状态，非 GitHub 来源数据。
+5. **会话及写入状态独立。** 浏览已接入公开项目不以登录为前提；登录状态和权限不得混为来源数据。明确写入经受控 Function 返回成功后再更新相关数据/触发回读与缓存失效；失败、超时或多请求非原子操作不假装已持久化。
+
+**[最小贯通过程]** 直接访问仓库 URL → 从路径取得目标仓库 → 读取并判定安装授权/配置/Issue（公共缓存只用于可安全共享的结果）→ Board 转换并呈现 → 点击卡片进入对应的独立 Issue URL → 有权用户经 Function 写入 GitHub → 按结果重新读取/更新当前仓库的来源状态。导航到另一个仓库时，过时请求结果不能被新页面采纳。每一步遵循现有 P3 缓存与 P4 安全边界，不增加第二套客户端业务真相。
+
+**[当前代码差距]** `RepoIssuesService` 目前用 `State.selected`、`select(fullName)` 和 `refresh()` 合并仓库列表、选择与 Issue 读取；`apps/playground/src/runtime.tsx` 也会在启动时全局 `refresh()`。现有 `RepoPanel`、`IssueWorkspace` 仍有直接访问部分 `/api/github-*` 的路径。可复用其 `getSnapshot/subscribe`、`revision` 防过期响应、UI 注册与 `ctx.effect()`；不因为方案 A 而重建整个服务。当前返回的 Issue 摘要缺少 Board 所需的标签与配置数据，真正的页面路由、配置加载和看板尚未实现。
+
+**[留待真实功能驱动]** 不在此定下路由库、SPA 深链 fallback、公开服务签名、是否拆包、缓存 Key/TTL/Tag、UI Slot、每仓库驻留快照数量、请求并发和导航位置恢复。无真实跨插件消费前，不建设新全局 Store、事件总线或通用 Repo Context 框架。
+
+**依据：** [Issue #2 页面与路由](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[MVP 产品规格](./LabourChain-MVP-Product-Spec.md)；当前 `main` 的 `plugins/repo-issues/src/index.ts`、`plugins/repo-panel/src/index.tsx`、`apps/playground/src/runtime.tsx`，以及本地图 P2b、P3、P4、P5a。
+
 ### 尚未确定的技术边界
 
 - **[已确认]** Functions 侧不运行 Cordis；**[待决]** API 端点在仓库中的组织、所属业务插件如何维护服务端处理逻辑，以及哪些纯领域代码适合跨运行时复用。
