@@ -274,22 +274,40 @@ flowchart TB
 | **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
 | **P5 项目领域模型与配置** | **已核对**：规格 §5–10 的配置 Namespace 三态、Label 同步、看板/频道规则、Repo/CardItem/Asset/Labour/成员来源语义；**已补充**看板视图新约束。**待落实**：具体 Schema、插件接口和旧规格冲突同步 | 第 3 节 **P5a–P5e** 已填写；不再将现有规则作为待决问题 |
-| P6 AI 开发与检查机制 | 项目级规则、技能引用、CI 和 Review 如何配合？ | 先确立架构，再变成可执行规范 |
+| **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**尚缺**：自动化测试、CI 工作流、`api/*.mjs` 专项检查与插件级独立验收装配；不能把代码存在当作已通过真实集成验收 | 第 7 节已核对当前 `main`；检查能力按首个真实业务闭环的风险补齐，不提前规定框架或新增通用基础设施 |
 
-## 7. AI 开发资料的正确层级
+## 7. P6 AI 开发与工程检查机制（已核对现状；验证能力随实现补齐）
 
-**[现状]** `main` 已经包含简短的 [`AGENTS.md`](https://github.com/Ri0n72Y/hackathon-platform/blob/main/AGENTS.md)，作为 AI 贡献和协作入口；`docs/architecture.md` 仍是事实、决定及未决架构问题的讨论地图，**不是**因写入草稿便自动生效的项目工程规范。AGENTS.md 不应复制整份地图，尚未确认的具体实现不得提升为强制规则。
+### 7.1 现有权威与权限边界
 
-`Ri0n72Y/agent-identity` 的资料按用途引用，不视为项目自身规范：
+**[现状·已建立]** 当前 [`main/AGENTS.md`](https://github.com/Ri0n72Y/hackathon-platform/blob/main/AGENTS.md) 已是**精简且仓库自足的贡献入口**，明确任务与代码优先、产品规格和当前实现的区别、变更权限、GitHub 安全写入、验证证据和 PR 交付方式；它不替代产品规格和具体 Issue。文档在 [PR #19](https://github.com/Ri0n72Y/hackathon-platform/pull/19) 中再次精简，不应把历史较长的 AGENTS 版本当成当前工程规范。
 
-- `library/react-cordis.md`：React / Cordis / 插件装配的技术参考。
-- `library/function-first-cordis-plugin-programming.md`：服务状态、纯逻辑与生命周期的编程参考；不强制禁用类。
-- `.agents/skills/project-team/`：持续角色和 GitHub 交接（已与用户上传的 Team v3 核对）。
-- `.agents/skills/ponytail/`：实现任务减少无用抽象的参考。
-- `.agents/skills/dependency-risk-testing/`：从实际依赖风险选择测试的参考。
-- `.agents/skills/ralph/`：需要边界清楚的工程任务时采用的任务/报告契约，不另建任务系统。
+**[已定义·协作]** [Team Index #13](https://github.com/Ri0n72Y/hackathon-platform/issues/13) 维护持续角色与工作入口，任务事实及交付归属仍由对应 GitHub Issues、PR 和仓库代码记录；不另建 AI 影子任务板。AI 可以发现问题、提出方案，**但不能未经用户确认将提议提升为强制规范或自行变更实质架构决策**。实施者不独立批准自己的工作；需独立 Review 时由未参与实现者检查最新代码与证据。对话并非自动同步，交接依赖 GitHub 的可核对记录。
 
-Core / Soul / Principles 属于通用身份或方法层，不应替代项目自有的架构与约束。外部技能是否被 AI 工具自动加载，需要按实际工具验证，不能仅凭仓库存在而假定。
+**[层级区分]** `AGENTS.md` 是当前仓库工作指引；MVP 产品规格定义产品行为与领域规则；本 Architecture Map 记录架构事实、确认决定及未决事项；Issue/PR 定义具体任务与提交；实际代码/测试/部署结果证明实现状态。`Ri0n72Y/agent-identity` 等外部 Skills 可按任务**自愿查阅**，不是项目已经安装、自动加载或强制执行的规范，不另造统一 Skills 装载体系。
+
+### 7.2 当前工程检查的实际覆盖
+
+| 项目 | 在当前 `main` 中看到的事实 | 尚不能据此证明 |
+| --- | --- | --- |
+| `npm run build` | `package.json` 脚本为 `tsc --noEmit && vite build`；构建入口使用 Vite/React | 已运行成功，或业务行为、浏览器交互已经验收 |
+| TypeScript 静态检查 | `tsconfig.json` 开启 `strict`，`include` 仅包含 `apps/**/*.ts(x)` 和 `plugins/**/*.ts(x)` | `api/*.mjs` 的参数/响应及 Function 运行行为得到同等检查 |
+| 独立测试 | 当前没有测试脚本、测试框架配置或专门测试文件 | 无须测试或当前功能已被自动验证 |
+| CI | 当前跟踪文件树不存在 `.github/workflows/` 工作流 | PR 自动执行了构建、测试或部署验证 |
+| Playground | `apps/playground/` 已可装配现有 Cordis/React 原型；插件级独立验收是已确认的设计约束 | 已拥有每个业务插件的单独场景、模拟失败用例和真实集成验收 |
+| GitHub / Vercel | OAuth、Issue 创建与评论代码已存在；Issue #5 提供研究与验收用例 | 授权、权限、会话撤销、实际写入归属、Vercel 多实例和失效行为都已端到端通过 |
+
+**[审计边界]** 上表来自对当前仓库文件及 [Issue #13](https://github.com/Ri0n72Y/hackathon-platform/issues/13) 的检查，**不是一次已执行的构建、CI 或生产环境测试**。没有检查输出时不得写“全部通过”；也不能因为未配自动测试就认定所有运行路径存在故障。
+
+### 7.3 验证层次与实际交付
+
+**[约束·已确认]** 业务插件应能在 Playground 中按**自身业务闭环**独立装配与验收，可组合真实共享服务或受控替身；单插件模拟验证与真实 GitHub/Vercel 集成结果**必须分别标注**。Cordis 依赖满足、`inject`、服务订阅、异步请求取消与生命周期释放等行为，需要按实际插件风险检查，不能只以界面渲染为通过。
+
+**[现有交付原则]** 每个任务根据实际修改范围选择可执行检查，说明运行命令、结果、未验证内容及遗留风险；PR 经必要的独立 Review，审查结果应对应**最新提交**。涉及会话/授权、安全权限、GitHub 写入、部署环境的真实性能和缓存命中率时，静态构建或假数据测试无法替代对应的真实环境验证。真实仓库写入必须遵守任务授权范围。
+
+**[实施建议·未冻结]** 不为“P6 点亮”另建测试框架、通用 Mock 平台或 CI 体系。等首个可独立验收的业务插件实际落地时，优先补上其最重要的纯领域逻辑检查、插件装配/卸载与失败用例；再根据已有构建命令和风险决定最小 CI 检查。Functions 侧认证、访问控制及写入另按 Issue #5/#18 和相应功能任务验证。这里不指定 Vitest、Playwright、lint 工具、覆盖率百分比或工作流模板。
+
+**[P6 结论]** 当前缺口是**工程检查和验收能力尚未随业务功能建立**，不是 AI 开发规则未讨论。现有 `AGENTS.md`、Issue/PR 流程与已确认插件验收原则足以支持后续有界实现；P6 不再作为需要重新选型的架构决策。
 
 ## 8. 后续工作节奏
 
