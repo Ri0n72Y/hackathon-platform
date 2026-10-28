@@ -114,21 +114,27 @@ flowchart TB
 
 以下为用户从看板专项讨论补充的**[约束·用户确认]**，属于 Issue Board 功能的视图规则；不构成平台级通用过滤器或书签框架。
 
-- **分列规则：** 当前看板视图可以选择 **`labourchain.config.yaml` 中已声明且定义了有效分列标签的 GitHub Label Namespace**；不允许使用未在该配置中声明的 Namespace 分列。`status:*` 不再是所有看板视图的唯一分列依据。所选 Namespace 决定 Issue 显示在哪一列；这直接沿用 MVP 规格 §5.2–5.3 的受管 Namespace 与有效标签语义，并非新增一套独立配置规则。特殊 `pinned` 标签只控制列内置顶，不作为分列 Namespace。
+- **分列规则：** 看板可选择 `labourchain.config.yaml` 中已声明且具有有效标签的 GitHub Label Namespace，`status:*` 不是唯一分列来源。**config 内的标签顺序从小到大**；若 Issue 在当前 Namespace 下有多个有效标签，默认归入其中**最大的标签**所在列；没有有效标签则不归入该 Namespace 的普通列。`pinned` 只控制列内置顶，不参与分列。
 - **全局置顶：** Issue 添加特殊 `pinned` Label 后，始终排在其所属列顶部，**不受当前视图分列 Namespace 的影响**。它改变列内优先级，不代替分列所属关系；即使使用手动排序模式，`pinned` 的置顶语义也成立。
+- **归档 Filter：** Issue 含 `status:archived` 时，无论当前分列 Namespace 是什么，**默认隐藏**；用户在 Filter 勾选「包含 archived」后才纳入候选结果。此规则与 GitHub Open/Closed 是不同维度。
 - **可共享的 Filter 视图：** 普通视图的筛选/排序规则通过 **URL Query Parameters** 表达；修改 Filter 应同步更新 URL，分享该 URL 可恢复该视图规则。它表达视图而非 GitHub 上的额外任务排序字段。
 - **本地手动排序：** 用户在同列拖动调整**显示顺序**后，当前 Filter **直接失效并清空**，界面显示「**手动排序**」。顺序仅在**当前页面会话中临时生效**，不写入 GitHub、也不保存跨页面的个人排序；重新选择筛选/排序、刷新或重访 URL 后恢复默认顺序。**该手动排序视图不支持分享**，不能将不含 Filter 的 URL 宣称为可复现的手动排列。
-- **常用视图：** 允许把常用 Filter/视图定义保存到仓库配置目录（如 `configs/`）或单独书签文件，由网页加载。**具体文件位置与格式待确定**；不将本地手动排序隐式转为可分享配置。
+- **常用视图：** 团队常用视图写在仓库根 `labourchain.config.yaml` 的 `views` 字段中；格式为 `views: [{<name>: <filter string>}, ...]` 的 YAML 列表表示（如下例）。直接复用既有 Filter 字符串，个人视图仍可通过 URL/书签保存，不引入额外书签文件或独立 View 服务。
+  ```yaml
+  views:
+    - <name>: <filter string>
+  ```
 
-**[跨列拖动·用户已确认]** 跨列拖动是 GitHub 写入：根据当前看板选定的、由仓库配置声明的**分列 Namespace**，只修改该 Issue 在**该 Namespace 内**的受管 Label，使其对应目标列的有效标签；不得顺带改写 `status:*`（当当前分列不是 `status` 时）、`version:*` 或其他 Namespace 与无关标签。Function 须按最新配置校验目标值、当前用户权限及实际写入结果，失败或冲突不能假装已成功。**同列拖动只改变临时显示顺序**，不是 GitHub 写入。
+**[跨列拖动·用户已确认]** 以**当前视图所属列**为来源，只移除该来源列对应的受管 Label，再加入目标列 Label；操作限定在**当前选定的 Namespace**，保留其他 Namespace 和该 Namespace 内的**其他标签**，不额外清空整个 Namespace。暂不区分「独立标签/非独立标签」，以后有真实需求再设计。**已知后果：** 当 Issue 在当前 Namespace 内还有比目标列更大的有效标签时，按最大标签归列规则，它在后续读取时可能出现在那个更大标签的列，而非拖动目标列；不能为规避该后果暗中清理额外标签。受控 Function 应校验当前配置、权限与实际写入结果；失败/部分失败要反馈。**同列拖动仅改变当前页面临时显示顺序**，不写入 GitHub。
 
-**[边界与待细化]** `pinned` 是独立的 GitHub 置顶 Label，仍在当前 Namespace 的所属列内优先；Filter/URL 表达可恢复的视图条件。刷新/重访会清除手动排列。保留的具体实施问题是：变更分列 Namespace 时是否保留某些交互选择、同为 `pinned` 的卡片如何稳定排序、非 `status` Namespace 下如何显示 `status:archived`；这些尚未获得独立规则，不因确定跨列写入而推断。
+**[边界与待细化]** `pinned` 仍只在所属列置顶；同为 `pinned` 的卡片间如何稳定排序、切换 Namespace 时保留何种交互状态，可在相应 UI 实现时细化。`status:archived` 的跨 Namespace 隐藏规则和多标签取最大值已确认，不再列为待决。
 
 **[规格差异·待同步]** 当前 [MVP 产品规格](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/LabourChain-MVP-Product-Spec.md) §7 仍以 `status:*` 为固定看板列、§7.3 仍写“筛选/排序偏好保存在本地”。后续确认的「可选 Namespace 分列、按所选 Namespace 跨列写标签、URL Filter、同列手动排序清空 Filter 且只在页面临时生效」优先于旧规格；这里记录差异，旧产品规格应另行在适当任务中同步，不将历史表述当作当前规则。
 
 ### P5b 配置与 Label 管理边界（MVP 规格 §5–6 已定义）
 
 **[规格已定义]** 根目录的 `labourchain.config.yaml` 是仓库级配置入口，负责有效标签、频道、显示方式和**由平台管理的 Namespace**。浏览器负责读取/解析用于展示的配置；服务端 Function 对写入、配置或标签同步须重新校验当前配置与 GitHub 用户权限。确切 Schema 和字段名尚未冻结，**不要因此重议下面已确定的语义**。
+**[后续用户确认·共享视图]** 在同一根配置文件中增加 `views` 列表，每一项为 `<name>: <filter string>`；只存储团队设定的 Filter 字符串，随需求增补其他字段，当前不创建额外的配置格式或存储文件。
 
 | 配置中某 Namespace 的状态 | 平台行为 |
 | --- | --- |
@@ -148,7 +154,7 @@ flowchart TB
 
 **[规格已定义·看板]** 默认读取 **Open Issue**，Closed 默认不展示；用户主动打开“显示已关闭”后再分页读取 Closed，不强制一次获取全部历史 Issue。GitHub 的 Issue API 可能混入 PR，MVP 只处理 Issue。GitHub 的 Open/Closed 生命周期状态与业务 Namespace 标签是**不同的维度**。无效数据可供诊断，但完整诊断 UI 不是 MVP 的前置条件。
 
-**[后续用户决策优先]** 原规格的看板以唯一有效 `status:*` 为列依据；当前已确认**按配置声明的有效 Namespace 选择分列**，因此进入某视图的 Issue 必须在**当前选定 Namespace** 下恰好拥有一个有效分列标签，不能把多个标签任意归入一列。`status:*` 仍有自己的整体任务状态语义，`version:*` 可多选的业务标签语义也不因切换分列而被改写。`status:archived` 的默认归档约束保留；在其他 Namespace 视图下如何与归档交叉展示仍待具体设计。跨列拖动只写入**所选 Namespace 内**的目标列标签；本地手动排序不修改 GitHub。
+**[后续用户决策优先]** 原 MVP 规格以唯一有效 `status:*` 为普通看板列依据；后续决定改为**可选配置 Namespace**，并采用**配置中从小到大的顺序取最大有效标签**归列，不再要求恰好一个有效标签。`version:*` 的多选业务语义保留，`status:*` 仍具有整体状态意义；本轮不新增独立/非独立标签分类。只要 Issue 含 `status:archived`，任何 Namespace 看板均默认隐藏，只有用户在 Filter 明确勾选「包含 archived」才纳入。跨列写入**只移除来源列标签、添加目标列标签**，保留同 Namespace 其他标签，且无须保证卡片最终落在拖动目标列；同列手动排序不写 GitHub。
 
 **[规格已定义·频道]** 每个频道由一个符合配置的 **Open Issue** 表示；必须恰好具有一个有效 `channel:*` 标签。没有有效 Issue → 空状态；出现多个候选 → 选择**创建时间最新**的有效 Issue；具有多个 `channel:*` 标签的 Issue 归属无效，不在频道视图展示。频道讨论直接使用该 Issue 的评论，不创建独立 Thread 对象。
 
@@ -210,6 +216,11 @@ flowchart TB
 **[架构原则]** 插件激活成功与业务数据已就绪不是同一个状态。需要可观察数据时，服务自身负责状态、订阅及更新；React 界面通过服务的快照/订阅接口观察变化，不以组件局部状态作为共享业务真相。只有真正跨插件消费的行为才需要成为服务；普通业务函数与组件仍可留在拥有它的插件内部。
 
 **[React/Cordis 参考·来源明确]** [React + Cordis Web 指南](https://github.com/Ri0n72Y/agent-identity/blob/main/library/react-cordis.md) 进一步区分 Cordis Context（服务依赖）与 React Context（组件树数据传递）：数据服务可以提供 `getSnapshot/subscribe`，React 通过 `useSyncExternalStore` 订阅；无变更时 `getSnapshot()` 的返回引用须保持稳定。React 宿主拥有唯一 `createRoot()`；业务插件通过 UI 服务注册组件，并借助 `ctx.effect()` 回收注册，而不是自己创建 React Root。上述是与现有 P2/P2b 一致的**技术参考**，未因此冻结具体 UI 注册 API、文件布局或新增强制框架。
+**[DSH 源码复核·结论]** 经核对 DSH `packages/client/ui-layout/src/client/index.ts`，浏览器插件在 `apply(ctx)` 内以 `ctx.slots.register({ name: 'root', ... }, AppFrame)` **注册 React 组件引用**；`packages/client/ui-chat/src/client/apply.ts` 通过 `ctx.slots.inject()` / `register()` 跨插件贡献组件；`packages/client/ui-renderer/src/client/index.ts` 管理单一 React Root；`packages/client/ui-renderer/src/client/registry.ts` 使用 `ctx.effect()` 对 UI 注册做生命周期回收。这证明通过 Cordis `ctx` **访问 UI 注册服务并交付 React Component** 可行，**不是**跨进程传送 JSX，也不表示应向展示组件直接传入整个 Cordis Context。源码：[ui-layout](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-layout/src/client/index.ts)、[ui-chat](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-chat/src/client/apply.ts)、[ui-renderer](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-renderer/src/client/index.ts)、[SlotRegistry](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-renderer/src/client/registry.ts)。
+
+**[当前实现·静态合法性核对]** 当前 `ReactUIService` 以 Cordis `Service` 提供 `ctx.reactUI`，`register(id, ComponentType)` 保存组件引用并提供撤销函数；`RepoPanel` 插件声明 `inject: ['reactUI','repoIssues']`，在 `apply(ctx)` 中使用 `ctx.effect(() => ctx.reactUI.register('repo-panel', RepoPanelEntry))`，关闭插件时能回收注册。`RepoPanelEntry` 以闭包传递 `RepoIssuesService`，没有把 Cordis `ctx` 当作 React 组件 props；`App` 通过稳定快照的 `getSnapshot`/`subscribe` 和 `useSyncExternalStore` 观察注册变化，Playground 只在入口创建一个 React Root。**该使用模式在 API、类型和生命周期上成立（静态核对）**，与 DSH 思路一致；尚未在本次调查执行构建、加载/卸载实测。
+
+**[Router·待定]** 当前 `App` 渲染全部已注册组件，**尚没有按 URL 匹配的页面注册功能**。研究方向是单一 React UI/Router 宿主 + 业务插件贡献页面（而非所有页面打包成一个业务大插件）；具体 Router 库、注册签名、路由冲突与深链接行为待用最小可运行实验验证，不照搬 DSH 整套 Slots/Client Modules 框架。
 
 **[约束·Playground]** Playground 按需要装配**被验收插件 + 声明的依赖**。对网络、授权等外部边界可以提供符合公开契约的受控替身，验证功能的成功、失败和生命周期行为；基础能力插件也可以通过操作/状态检查验收，不强制有可见的业务页面。应明确记录哪些结果来自替身、哪些来自真实 Vercel / GitHub 组合，避免把单插件验收报告为端到端验证。场景格式、目录和具体装载器暂不冻结。
 
@@ -224,6 +235,7 @@ flowchart TB
 **[用户已确认·方案 A]** URL 中的 `owner/repo` **直接决定要读取哪个仓库**；首页、专注看板和 Issue 详情无需再设计第二套仓库选择机制。平台入口的仓库选择器只需导航到相应 URL，而不是通过全局唯一的可变 `selected` 驱动页面。看板按该 URL 指定仓库请求既有 API，**获取该仓库的 Issue 列表**，再按配置/Namespace 转换为 CardItem；进入某个 Issue 页面时才单独按需读取其详情、评论和劳动记录。无需因此新建 Cordis Context、插件实例、Repo Context 或独立「仓库服务契约」设计任务。
 
 **[已确认·Issue #2，按最新看板决策同步]** `/` 是平台入口；`/{owner}/{repo}` 为单仓库项目首页（Title/简要介绍 → **限高 Board 预览** → Repo 动态）；`/{owner}/{repo}/kanban` 为信息更完整的独立看板，支持适用的 URL Filter；`/{owner}/{repo}/issues/{number}` 是独立 Issue 详情。首页预览与专注 Kanban 是**同一 Board 功能及来源数据的两种呈现**，不据此建立两个业务插件。页面支持直达、刷新和浏览器前进后退；URL 只定位资源，不代表 App 已安装或用户已获写入权限。两处 Board 都按本地图 P5a 采用**配置中声明且有效的可选 Namespace 分列**，跨列写入也只作用于当前所选 Namespace，不恢复旧的固定 `status:*` 描述。
+**[首页 Repo 动态·已确认候选来源]** 选取**最近合并的 PR、近期 Commit Message、最近更新的 Issue、新建的 Issue**，由对应 GitHub 来源按需读取；不据此建立劳动记录跨 Issue 聚合。精确事件合并/去重、数量及展示样式等随页面功能实现再决定。
 
 **[基于现状的最小职责建议；不冻结接口/包布局]**
 
@@ -311,7 +323,7 @@ flowchart TB
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
-| **P5 项目领域模型与配置** | **已确认**：受管 Namespace 三态、可选分列、跨列只写所选 Namespace、URL Filter 与页面临时手动排序；劳动记录仅在 Issue 详情局部展示，卡片不显示，整体统计待自有后端。**待落实**：具体 Schema 与旧 MVP 规格同步；仓库读取流程已在 P2c 确认，不再另设服务契约问题 | 第 3 节 P5a–P5e、P2c；不提前冻结实现接口 |
+| **P5 项目领域模型与配置** | **已确认**：Namespace 受管三态、config 列顺序取最大有效标签、archived 默认全视图隐藏且 Filter 可包含；跨列仅删来源列标签并加目标列标签、同 Namespace 其他标签保留；`views` 在根 config 保存 Filter；劳动记录仅在 Issue 详情聚合。**待落实**：具体实现与旧 MVP 规格同步 | 第 3 节 P5a–P5e、P2c；不提前冻结实现接口 |
 | **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**本次补充**：按 `agent-identity` 已有 React Coding / Review / 导航语义资料核对组件开发参考。**尚缺**：自动化测试、CI、`api/*.mjs` 专项检查与插件级独立验收；参考资料不自动成为强制项目规范 | 第 7 节，尤其 §7.4；检查能力按实际业务风险补齐，不提前新增通用框架 |
 
 ## 7. P6 AI 开发与工程检查机制（已核对现状；验证能力随实现补齐）
