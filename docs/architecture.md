@@ -220,7 +220,7 @@ flowchart TB
 
 **[当前实现·静态合法性核对]** 当前 `ReactUIService` 以 Cordis `Service` 提供 `ctx.reactUI`，`register(id, ComponentType)` 保存组件引用并提供撤销函数；`RepoPanel` 插件声明 `inject: ['reactUI','repoIssues']`，在 `apply(ctx)` 中使用 `ctx.effect(() => ctx.reactUI.register('repo-panel', RepoPanelEntry))`，关闭插件时能回收注册。`RepoPanelEntry` 以闭包传递 `RepoIssuesService`，没有把 Cordis `ctx` 当作 React 组件 props；`App` 通过稳定快照的 `getSnapshot`/`subscribe` 和 `useSyncExternalStore` 观察注册变化，Playground 只在入口创建一个 React Root。**该使用模式在 API、类型和生命周期上成立（静态核对）**，与 DSH 思路一致；尚未在本次调查执行构建、加载/卸载实测。
 
-**[Router·研究方案已写，尚待运行验证]** 已形成独立的 **[React Router × Cordis 页面注册与组件获取方案](./react-router-cordis-integration.md)**。DSH 源码支持经 `ctx.slots.register()` 注册组件、统一 React Root 及随 `ctx.effect()` 卸载，但本次检索未发现直接采用 React Router 的现成范例。推荐在**现有 `ReactUIService`** 上扩展页面注册元数据：单一 `<BrowserRouter>` 内使用 `useSyncExternalStore` 取得动态注册表，再由 `useRoutes()` 匹配并渲染页面；首页等需要跨插件复用 BoardPreview 时，以**按名称注册/取得 React 组件引用**承载，不运行时 import 另一业务插件的 UI 实现。业务插件仍按功能划分，不一页一个必需插件，也不把所有页面塞进宿主。**此为待实测候选方案，非已完成的 Router 实现或最终技术决议**；验证范围含动态注册/卸载、缺页/冲突、URL 参数及 Vercel 深链刷新，暂不引入 DSH 全套 Slots。
+**[Router·用户已确认采用方案，无需独立实验]** 以 **[React Router × Cordis 页面注册与组件获取方案](./react-router-cordis-integration.md)** 为实施基础。保留现有 `ReactUIService`，共享**单一 React Root/BrowserRouter**；插件按业务功能注册页面，宿主通过 `useSyncExternalStore` 获取注册组件、`useRoutes()` 路由匹配；跨插件嵌入 BoardPreview 等组件时用按名称注册/读取，不由宿主运行时导入具体业务插件 JSX。不引入 DSH 的完整 Slots，不把所有页面塞入大插件，也不强制一个 URL 对应一个插件。DSH 已证明 Cordis `ctx` 服务注册 React 组件及回收机制可行，但其并非 React Router 原样范例。**架构选择已确认，不设独立 PoC/实验前置条件**；实际页面开发仍须按正常流程核对卸载、深链、URL 参数及错误路径。此处未声称 Router 已实现或验收。
 
 **[约束·Playground]** Playground 按需要装配**被验收插件 + 声明的依赖**。对网络、授权等外部边界可以提供符合公开契约的受控替身，验证功能的成功、失败和生命周期行为；基础能力插件也可以通过操作/状态检查验收，不强制有可见的业务页面。应明确记录哪些结果来自替身、哪些来自真实 Vercel / GitHub 组合，避免把单插件验收报告为端到端验证。场景格式、目录和具体装载器暂不冻结。
 
