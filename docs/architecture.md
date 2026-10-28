@@ -219,9 +219,9 @@ flowchart TB
 
 **来源：** [Cordis 服务与 `inject` 教程](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-tutorial/03-services.zh.md)、[生命周期与 effect](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-tutorial/02-lifecycle-and-effects.zh.md)、[React + Cordis 技术指南](https://github.com/Ri0n72Y/agent-identity/blob/main/library/react-cordis.md)。
 
-### P2c 仓库 URL 作用域与项目页面状态流（方案 A 已确认；接口待落实）
+### P2c 仓库 URL 作用域与项目页面数据流（已确认；不另设服务契约课题）
 
-**[用户已确认·方案 A]** URL 中的 `owner/repo` 是仓库首页、专注看板和 Issue 详情的数据访问上下文。仓库选择器可以保留在平台入口，但选中仓库应**导航到相应 URL**，而不是用共享数据服务中的唯一可变 `selected` 字段驱动全部页面。明确指定仓库不等于每个仓库必须新建 Cordis Context、插件实例或新的 Repo Context 服务；不提前规定这些实现形式。
+**[用户已确认·方案 A]** URL 中的 `owner/repo` **直接决定要读取哪个仓库**；首页、专注看板和 Issue 详情无需再设计第二套仓库选择机制。平台入口的仓库选择器只需导航到相应 URL，而不是通过全局唯一的可变 `selected` 驱动页面。看板按该 URL 指定仓库请求既有 API，**获取该仓库的 Issue 列表**，再按配置/Namespace 转换为 CardItem；进入某个 Issue 页面时才单独按需读取其详情、评论和劳动记录。无需因此新建 Cordis Context、插件实例、Repo Context 或独立「仓库服务契约」设计任务。
 
 **[已确认·Issue #2，按最新看板决策同步]** `/` 是平台入口；`/{owner}/{repo}` 为单仓库项目首页（Title/简要介绍 → **限高 Board 预览** → Repo 动态）；`/{owner}/{repo}/kanban` 为信息更完整的独立看板，支持适用的 URL Filter；`/{owner}/{repo}/issues/{number}` 是独立 Issue 详情。首页预览与专注 Kanban 是**同一 Board 功能及来源数据的两种呈现**，不据此建立两个业务插件。页面支持直达、刷新和浏览器前进后退；URL 只定位资源，不代表 App 已安装或用户已获写入权限。两处 Board 都按本地图 P5a 采用**配置中声明且有效的可选 Namespace 分列**，跨列写入也只作用于当前所选 Namespace，不恢复旧的固定 `status:*` 描述。
 
@@ -230,7 +230,7 @@ flowchart TB
 | 边界 | 责任 | 不承担 |
 | --- | --- | --- |
 | 页面 / 路由组合 | 从 URL 取当前 `owner/repo`、可选 Issue 编号及视图参数；提供页面与仓库上下文给使用者 | GitHub 权威数据、全局仓库选择状态或最终授权判断 |
-| 共享数据访问（Cordis 服务与受控 Function） | 按**显式仓库标识**读取 Issue、配置等来源数据，管理相应加载/错误状态；在多个业务消费者之间有条件复用 | Board 分列、频道有效性与 UI 局部动画 |
+| 数据读取（现有 Cordis 能力与 API） | **直接按 URL 提供的 `owner/repo` 请求该仓库的 Issue 列表**，按需读取配置；详情页再读取指定 Issue 及评论，处理基本加载/错误反馈 | 额外的全局仓库选择、为本流程创建通用「数据服务契约」或全局同步框架 |
 | 配置判定 | 解析 `labourchain.config.yaml` 并按受管 Namespace 规则提供有效性判定；先考虑纯函数或已有数据能力内部逻辑 | 无需求时另建独立基础插件 |
 | Board 业务插件 | 对选中仓库做 Issue → CardItem、分列与 Filter 投影；复用逻辑服务首页预览和独立 Kanban | GitHub 用户授权、独立的 Issue 权威副本、劳动记录读取和卡片劳动统计 |
 | Channels / 其他业务插件 | 用相同仓库身份访问来源数据，各自解释频道及其他领域规则 | 为共享 Issue 人为复制第二个 GitHub 对象 |
@@ -240,16 +240,16 @@ flowchart TB
 **[状态流与归属]**
 
 1. **资源身份属 URL。** 路由改变即切换仓库或对象；`/` 的仓库列表仅用于发现/导航，不是所有页面必经的数据来源。
-2. **来源状态按仓库区分。** 数据能力区分不同 `owner/repo` 的读取与进行中的请求，不能让 A 仓库较晚返回的响应覆盖 B 仓库的页面；保留既有 `revision` 防竞态或使用请求取消均可，具体订阅 API 和驻留缓存范围待实现时选定。
+2. **来源数据跟随 URL。** 看板读取目标仓库的 Issue 列表；切换仓库时，不让之前仓库的迟到响应误显示在新页面。继续利用现有请求版本检查等简单手段即可，不引入新的同步服务或独立的服务契约设计。
 3. **领域状态由业务解释。** Board 使用来源 Issue 与有效配置生成列和卡片；缺配置/配置无效、加载中、无匹配 Issue、未授权、读取失败是不同的界面情况，不能一律作为“没有卡片”。
 4. **可恢复的视图条件属 URL。** 首页看板预览和 Kanban 之间继承适用的 Namespace / Filter 等查询条件（P5a、Issue #2）。同列手动排序会清空 Filter，临时顺序仅在当前页面会话内生效、不能分享，刷新或重新应用筛选/排序后重置；弹窗、编辑草稿及视觉交互属于组件局部状态，非 GitHub 来源数据。
-5. **会话及写入状态独立。** 浏览已接入公开项目不以登录为前提；登录状态和权限不得混为来源数据。明确写入经受控 Function 返回成功后再更新相关数据/触发回读与缓存失效；失败、超时或多请求非原子操作不假装已持久化。
+5. **写入确认与读取可见性分开。** 浏览公开已接入项目不要求登录，写入仍经受控 API 校验身份与权限。**是否写入成功以 GitHub 写入 API 的实际结果为准**；后续通过读取 API 获取新数据。用户实测写入后数据在读取结果中可能**延迟约 1–2 分钟才可见**，当前阶段接受这一延迟，不承诺立即同步或为了它增加 WebSocket、持续轮询、复杂前端一致性机制。写入失败、超时或部分失败仍须明确反馈，不把不确定结果当成功；可按需刷新。
 
-**[最小贯通过程]** 直接访问仓库 URL → 取出仓库身份 → 校验接入并读取配置/Issue（公共缓存只用在安全数据）→ Board 仅生成任务卡片与列 → 点击卡片进入独立 Issue URL，按需读取**该 Issue** 的讨论和劳动历史 → 授权用户经受控 Function 写入 GitHub → 按实际结果更新相关来源状态。**Board 不批量读取劳动记录**；导航切换时拒绝旧仓库迟到响应。遵守 P3 缓存和 P4 写入安全边界，不建立第二套业务真相。
+**[最小贯通过程]** 访问仓库 URL → 据 `owner/repo` 请求 API 获取**该仓库的 Issue 列表**及必要配置 → Board 生成卡片与列 → 点击卡片进入独立 Issue URL，仅按需读取**该 Issue** 的讨论与劳动历史 → 授权用户通过 API 写入 GitHub → API 确认写入结果，后续重新读取（可能延迟约 1–2 分钟可见）。**Board 不批量读取劳动记录**；权限/安装范围校验不因 URL 或缓存而省略。
 
 **[当前代码差距]** `RepoIssuesService` 目前用 `State.selected`、`select(fullName)` 和 `refresh()` 合并仓库列表、选择与 Issue 读取；`apps/playground/src/runtime.tsx` 也会在启动时全局 `refresh()`。现有 `RepoPanel`、`IssueWorkspace` 仍有直接访问部分 `/api/github-*` 的路径。可复用其 `getSnapshot/subscribe`、`revision` 防过期响应、UI 注册与 `ctx.effect()`；不因为方案 A 而重建整个服务。当前返回的 Issue 摘要缺少 Board 所需的标签与配置数据，真正的页面路由、配置加载和看板尚未实现。
 
-**[留待真实功能驱动]** 不在此定下路由库、SPA 深链 fallback、公开服务签名、是否拆包、缓存 Key/TTL/Tag、UI Slot、每仓库驻留快照数量、请求并发和导航位置恢复。无真实跨插件消费前，不建设新全局 Store、事件总线或通用 Repo Context 框架。
+**[设计结论与实施边界]** URL 选仓库、API 读 Issue 列表、受控 API 写 GitHub、允许短暂读取延迟，这几项已明确，不再单列为待讨论的「仓库数据服务契约」。实现时按现有 `RepoIssuesService` 与页面需要调整即可；不在此预定路由库、服务方法签名、插件拆包、缓存 TTL/Key 或通用全局 Store/事件总线。
 
 **依据：** [Issue #2 页面与路由](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[MVP 产品规格](./LabourChain-MVP-Product-Spec.md)；当前 `main` 的 `plugins/repo-issues/src/index.ts`、`plugins/repo-panel/src/index.tsx`、`apps/playground/src/runtime.tsx`，以及本地图 P2b、P3、P4、P5a。
 
@@ -298,7 +298,7 @@ flowchart TB
 
 **[官方能力·已调研]** Vercel CDN Cache 缓存与用户身份无关的完整响应；Runtime Cache 通过 `@vercel/functions` 的 `getCache()` 缓存 Function 使用的公共数据，支持 TTL、Tag 失效且按区域隔离。它们不需要新增自建 Redis、常驻 Worker 或在线业务数据库。Runtime Cache 仍然是**服务端共享的临时缓存**。来源、适用范围、现有 `no-store` 代码现状和验证清单见 **[Vercel Functions 缓存能力调研](./vercel-functions-cache-research.md)**。
 
-**[安全与一致性边界]** 不将用户 OAuth 会话、令牌、登录态相关权限结果或写入响应混入跨用户 CDN/Runtime Cache。公开仓库不等于所有响应天然公共；按实际数据是否与身份无关、安全的仓库范围判定来区分。GitHub 仍是权威数据源，写入后失效和外部更新造成的过期窗口需要实际验证；缓存不能替代安装/权限校验。
+**[安全与一致性边界]** 不将用户 OAuth 会话、令牌、登录态相关权限结果或写入响应混入跨用户 CDN/Runtime Cache。公开仓库不等于所有响应天然公共；按实际数据是否与身份无关、安全的仓库范围判定来区分。GitHub 仍是权威数据源。**实测写入后约 1–2 分钟的读取可见性延迟可接受**，此为经验现象和产品容忍度，**不是保证的刷新时限**；缓存策略不应无意放大过期窗口，具体 TTL/失效机制留待端点验证。无实时同步需求；缓存亦不能替代安装/权限校验。
 
 **[规格差异·待同步]** 旧 MVP 规格 §2.2/§11 的“无服务端共享缓存”以及浏览器缓存安排与新的倾向存在差异：允许评估采用 **Vercel 托管 Runtime Cache**，并不等于批准自建数据库、Redis 或后台持续同步。应在产品规格更新时显式处理；当前不冻结缓存时间、键、Tag、费用目标和刷新机制。
 
@@ -311,7 +311,7 @@ flowchart TB
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
-| **P5 项目领域模型与配置** | **已确认**：受管 Namespace 三态、可选分列、跨列只写所选 Namespace、URL Filter 与页面临时手动排序；劳动记录仅在 Issue 详情局部展示，卡片不显示，整体统计待自有后端。**待落实**：Schema、仓库数据访问约定和旧 MVP 规格同步 | 第 3 节 P5a–P5e；不提前冻结实现接口 |
+| **P5 项目领域模型与配置** | **已确认**：受管 Namespace 三态、可选分列、跨列只写所选 Namespace、URL Filter 与页面临时手动排序；劳动记录仅在 Issue 详情局部展示，卡片不显示，整体统计待自有后端。**待落实**：具体 Schema 与旧 MVP 规格同步；仓库读取流程已在 P2c 确认，不再另设服务契约问题 | 第 3 节 P5a–P5e、P2c；不提前冻结实现接口 |
 | **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**本次补充**：按 `agent-identity` 已有 React Coding / Review / 导航语义资料核对组件开发参考。**尚缺**：自动化测试、CI、`api/*.mjs` 专项检查与插件级独立验收；参考资料不自动成为强制项目规范 | 第 7 节，尤其 §7.4；检查能力按实际业务风险补齐，不提前新增通用框架 |
 
 ## 7. P6 AI 开发与工程检查机制（已核对现状；验证能力随实现补齐）
