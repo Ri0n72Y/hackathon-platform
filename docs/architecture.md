@@ -220,7 +220,7 @@ flowchart TB
 
 **[当前实现·静态合法性核对]** 当前 `ReactUIService` 以 Cordis `Service` 提供 `ctx.reactUI`，`register(id, ComponentType)` 保存组件引用并提供撤销函数；`RepoPanel` 插件声明 `inject: ['reactUI','repoIssues']`，在 `apply(ctx)` 中使用 `ctx.effect(() => ctx.reactUI.register('repo-panel', RepoPanelEntry))`，关闭插件时能回收注册。`RepoPanelEntry` 以闭包传递 `RepoIssuesService`，没有把 Cordis `ctx` 当作 React 组件 props；`App` 通过稳定快照的 `getSnapshot`/`subscribe` 和 `useSyncExternalStore` 观察注册变化，Playground 只在入口创建一个 React Root。**该使用模式在 API、类型和生命周期上成立（静态核对）**，与 DSH 思路一致；尚未在本次调查执行构建、加载/卸载实测。
 
-**[Router·待定]** 当前 `App` 渲染全部已注册组件，**尚没有按 URL 匹配的页面注册功能**。研究方向是单一 React UI/Router 宿主 + 业务插件贡献页面（而非所有页面打包成一个业务大插件）；具体 Router 库、注册签名、路由冲突与深链接行为待用最小可运行实验验证，不照搬 DSH 整套 Slots/Client Modules 框架。
+**[Router·研究方案已写，尚待运行验证]** 已形成独立的 **[React Router × Cordis 页面注册与组件获取方案](./react-router-cordis-integration.md)**。DSH 源码支持经 `ctx.slots.register()` 注册组件、统一 React Root 及随 `ctx.effect()` 卸载，但本次检索未发现直接采用 React Router 的现成范例。推荐在**现有 `ReactUIService`** 上扩展页面注册元数据：单一 `<BrowserRouter>` 内使用 `useSyncExternalStore` 取得动态注册表，再由 `useRoutes()` 匹配并渲染页面；首页等需要跨插件复用 BoardPreview 时，以**按名称注册/取得 React 组件引用**承载，不运行时 import 另一业务插件的 UI 实现。业务插件仍按功能划分，不一页一个必需插件，也不把所有页面塞进宿主。**此为待实测候选方案，非已完成的 Router 实现或最终技术决议**；验证范围含动态注册/卸载、缺页/冲突、URL 参数及 Vercel 深链刷新，暂不引入 DSH 全套 Slots。
 
 **[约束·Playground]** Playground 按需要装配**被验收插件 + 声明的依赖**。对网络、授权等外部边界可以提供符合公开契约的受控替身，验证功能的成功、失败和生命周期行为；基础能力插件也可以通过操作/状态检查验收，不强制有可见的业务页面。应明确记录哪些结果来自替身、哪些来自真实 Vercel / GitHub 组合，避免把单插件验收报告为端到端验证。场景格式、目录和具体装载器暂不冻结。
 
