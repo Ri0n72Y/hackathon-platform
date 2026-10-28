@@ -1,6 +1,6 @@
-# React Router × Cordis：页面注册与组件获取方案（设计草案）
+# React Router × Cordis：页面注册与组件获取方案（已选定）
 
-> 2026-10-28 · 仅技术调研与候选实现方案；**尚未写业务代码、未运行最小验证、未获得最终选型确认**。遵守 Ponytail：沿用当前 `ReactUIService`，不照搬 DSH 的完整 Slots、插件模块加载器或服务端 Router。
+> 2026-10-28 · **用户已确认以本方案为实施基础，不要求为选型另做独立实验**。本文是已选定的架构方向与实施参考；**不等于已经实现或通过实际环境验收**。遵守 Ponytail：沿用当前 `ReactUIService`，不照搬 DSH 的完整 Slots、插件模块加载器或服务端 Router。
 
 ## 1. 目标与边界
 
@@ -31,7 +31,7 @@
 
 **结论：** 不需要每个业务插件自己实例化 `BrowserRouter`，也无需为 React Router 额外建设 Cordis 服务。**统一 Router 是 UI 宿主的内部实现**，插件仍经 `ctx.reactUI` 提供组件。
 
-## 3. 推荐最小方案（待实测）
+## 3. 采用的最小方案（实现时按需落地）
 
 ```text
 apps/playground 或正式浏览器入口
@@ -47,20 +47,20 @@ apps/playground 或正式浏览器入口
 
 当前 `plugins/react-ui/src/index.tsx` 已有 `ctx.reactUI.register(id, ComponentType)`、稳定 `getSnapshot()/subscribe()`、`ctx.effect()` 卸载回收。**扩展这个服务即可，不要另建全局 Router 注册框架。**
 
-最小候选接口（**示意，不是现有 API**）：
+最小接口示意（**方案已确认，方法签名不是现有 API；实现时可做等效调整**）：
 
 ```ts
 type PageEntry = { id: string; path: string; Component: React.ComponentType }
 
-// 可在现有 ReactUIService 中新增：
+// 基于现有 ReactUIService 扩展：
 registerPage(entry: PageEntry): () => void
-// 非页面位置先沿用现有 register(id, Component)，再按实际复用需要提供读取 Hook。
+// 非页面位置沿用现有 register(id, Component)；仅按真实消费需求补最小读取入口。
 ```
 
 业务插件例如 Board 负责提供 `/:owner/:repo/kanban` 的 `KanbanPage`：
 
 ```tsx
-// 示例：业务插件内部（拟议 API）
+// 示例：业务插件内部（待实现的注册 API）
 const issues = ctx.repoIssues
 function KanbanPageEntry() {
   const { owner, repo } = useParams()
@@ -95,13 +95,13 @@ function RoutedPages({ ui }: { ui: ReactUIService }) {
 </BrowserRouter>
 ```
 
-这里 `isPageEntry` / `NotFound` 是示意辅助逻辑。页面路径属于注册表元数据；**Router 不从某业务插件 import 具体 React 页面**。注册/撤销导致快照更新，`useSyncExternalStore` 触发重新匹配。已存在的 `register()` 可以在过渡期间保留；不要求现有 Playground 一次性迁移所有页面。
+这里 `isPageEntry` / `NotFound` 是示意辅助逻辑。页面路径属于注册表元数据；**Router 不从某业务插件 import 具体 React 页面**。注册/撤销导致快照更新，`useSyncExternalStore` 触发重新匹配。已存在的 `register()` 可以在过渡期间保留；不要求现有 Playground 一次性迁移所有页面。**不再为选择这套机制另做独立 PoC；直接作为功能实现的技术基础。**
 
 ### 3.2 首页如何获得另一个插件的 BoardPreview
 
 **页面注册**（把 `KanbanPage` 映射到 URL）与**嵌入组件**（首页插入 `BoardPreview`）不是同一需求。
 
-最小候选：仍使用 `reactUI` 的**按名称组件注册**，Board 插件贡献 `board.preview`，仓库首页插件在自己的组件树中订阅并读取该名称对应的 `ComponentType`；注册表变化后重新渲染，注销后移除该区域。旧 `register(id, Component)` 可以担当贡献入口，UI Host 不再将所有普通注册项一股脑渲染。若需便利函数，可在 `react-ui` 内增加一个读取 Hook，例如 `useRegisteredUI(ui, 'board.preview')`（**候选 API**），该 Hook 从 `getSnapshot/subscribe` 读取，不把整个 Cordis `ctx` 放进 React props，也不让首页插件运行时依赖 Board 实现模块。
+最小候选：仍使用 `reactUI` 的**按名称组件注册**，Board 插件贡献 `board.preview`，仓库首页插件在自己的组件树中订阅并读取该名称对应的 `ComponentType`；注册表变化后重新渲染，注销后移除该区域。旧 `register(id, Component)` 可以担当贡献入口，UI Host 不再将所有普通注册项一股脑渲染。若需便利函数，可在 `react-ui` 内增加一个读取 Hook，例如 `useRegisteredUI(ui, 'board.preview')`（**接口示意，具体名称按实现需要确定**），该 Hook 从 `getSnapshot/subscribe` 读取，不把整个 Cordis `ctx` 放进 React props，也不让首页插件运行时依赖 Board 实现模块。
 
 ```text
 Board 插件 ── registerPage('board.kanban', KanbanPage) ──> Router 渲染
@@ -125,16 +125,12 @@ Board 插件 ── registerPage('board.kanban', KanbanPage) ──> Router 渲�
 | --- | --- |
 | 每个业务插件各自创建 React Root / BrowserRouter | 多 Router 与导航上下文相互割裂，不采用 |
 | 所有业务页面、Board/Issue/Channels JSX 都集中到一个 UI 大插件 | 妨碍独立装配、独立验收，不采用 |
-| 共享 Router + Cordis 页面注册 + 按名称取可复用组件 | **推荐验证的最小方案** |
+| 共享 Router + Cordis 页面注册 + 按名称取可复用组件 | **已选定的实施方案** |
 | 直接移植 DSH 的完整 Slots/Client Modules | 超过当前需求，暂不采用 |
 | 使用 Data/Framework Mode 的 Loader/Action 取代现有 API 数据访问 | 会引入重复职责，当前没有必要 |
 
-## 5. 最小验证清单（未执行）
+## 5. 实施验收边界（不设独立实验前置门槛）
 
-1. 为 `reactUI` 增加页面元数据并在唯一 Root 下调用 `useRoutes`；验证 `/`、仓库首页、Kanban 和 Issue 的直接访问。
-2. 验证首页通过注册表取得独立 Board 插件贡献的 `BoardPreview`，不导入该插件实现；卸载后不残留 UI。
-3. Playground 只加载单个页面插件+真实/受控替身依赖，验证插件注册、注销、重新安装、缺失依赖与重复路径拒绝。
-4. 验证 `useParams` 决定仓库身份、`useSearchParams` 保留 Filter/排序，浏览器前进/后退和重新访问 URL 恢复页面。
-5. 在实际 Vercel Preview 核对 SPA 深链 fallback（`/api/*` 与静态资源不受影响）、404 和插件尚未注册时的可理解反馈。
+方案已选定，**无需单独创建 Router PoC 或实验任务**。开发相应页面时按常规工程质量要求检查：页面注册及卸载、唯一 ID/路径冲突、从 URL 读取仓库/Issue 参数、Filter/排序的浏览器历史与直接刷新、首页按名称嵌入 BoardPreview、无插件或路径不存在的回退，以及 Vercel 深层 URL 不吞掉 `/api/*` 或静态资源。这些是**实现验收项，不是继续选择 Router 架构的条件**。
 
-**阶段结论：** “通过 `ctx` 注册 React Component”已由 DSH 与当前仓库的静态源码核对支持；“单一 Router + 动态组件注册/查询”的 React Router 集成**是明确的实施候选方案，尚待上述最小实验证实**。不在文档阶段写新业务 Router 或重构现有页面。
+**阶段结论：** DSH 和当前仓库静态源码确认了通过 `ctx` 的服务注册 React Component 的合法性；**已决定使用统一 React Router + 当前 `ReactUIService` 动态页面/组件注册**作为实施基础。尚未编写新 Router 代码或完成运行验收；不再要求架构选择前单独实验。
