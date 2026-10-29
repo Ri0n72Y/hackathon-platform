@@ -1,7 +1,7 @@
 # GitHub App 用户授权与安全写入链路研究
 
 状态：Research draft；2026-10-21。关联：#5、#1。**未创建测试 GitHub App，未进行真实 API 写入。**
-本报告将「官方文档验证」「Connector 行为观察」「工程建议」「待 PoC」分开。遵守 MVP：React + Cordis、Vercel 静态站与 Functions、GitHub 公开仓库、只处理 Issue、不依赖在线业务数据库。正式实施前需核对未提供的《SKILL - team v3.md》。
+本报告将「官方文档验证」「Connector 行为观察」「工程建议」「待 PoC」分开。遵守 MVP：React + Cordis、Vercel 静态站与 Functions、GitHub 公开仓库、只处理 Issue、不依赖在线业务数据库。
 
 ## 1. 核心结论与边界
 
@@ -111,6 +111,5 @@ Issue REST endpoints 可能包含 PR；不要仅通过 `issues/{n}` 路径证明
 2. 仓库配置变更是否允许直接更新受保护默认分支？如果默认分支有 branch protection/ruleset，则必须明确可行权限和冲突 UX。
 3. 状态 Label 多请求非原子：MVP 是否接受最终一致与刷新确认，或需要收紧状态变更并发策略？
 4. 仓库挂载的 Owner/Maintainer 权限阈值如何根据实际 GitHub API 转换成可复现的校验？
-5. 补充《SKILL - team v3.md》供正式团队流程复核。
 
 本报告不等于端到端 PoC 已成功。**已验证**的是 GitHub 官方协议和端点权限声明；**尚未验证**的是 Vercel 部署行为、真实 OAuth 回调、cookie 长度和实际写入 actor。
