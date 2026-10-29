@@ -30,7 +30,7 @@
 -   读取 `labourchain.config.yaml`。
 -   读取和展示 GitHub Issue；第一版不获取 PR。
 -   基于 `channel:*` Label 的频道页面。
--   创建 Issue、回复评论和修改状态 Label。
+-   创建 Issue、回复评论和修改看板当前选定 Namespace 的受管 Label。
 -   配置初始化与变更时的 Label 同步。
 -   浏览器临时缓存、普通刷新和强制刷新。
 -   基础劳动记录展示。
@@ -203,7 +203,7 @@ Issue，评论就是该频道的讨论内容。
 -   复用现有 Board 的拖拽（DnD）、样式和卡片交互设计。
 -   点击卡片后直接展示对应 Issue，可使用侧边栏。
 -   看板的 Namespace、Filter 等可分享视图条件由 URL 保存；同列手动排序仅在当前页面临时生效，不写入 GitHub，并会清空 Filter。刷新或重新应用筛选/排序后，临时顺序重置。
--   支持创建 Issue、回复评论和修改状态。
+-   支持创建 Issue、回复评论和修改当前视图分列 Namespace 的受管标签。
 -   如果 GitHub
     写入失败，界面不得永久显示未成功的变更；必须显示失败并允许恢复或重试。
 
