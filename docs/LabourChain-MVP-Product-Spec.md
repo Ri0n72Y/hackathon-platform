@@ -345,7 +345,7 @@ labour:
 ## 13. MVP 验收标准
 
 -   [ ] 仓库 Owner / Maintainer 能授权并挂载公开 GitHub 仓库。
--   [ ] 首页能从配置好的公共索引仓库读取项目清单并渲染项目卡片。
+-   [ ] 项目发现优先使用 GitHub Topic / Repository Search 获取候选项目卡片，不维护自建全局项目索引；如果授权过滤无法通过 GitHub App / GitHub API 的权威数据可靠验证，则将相关过滤或信息流后置。
 -   [ ] 项目页从 Repo 根目录 `team-member.json` 读取团队成员，并在头像悬停时展示详细信息；平台编辑通过 Bot 身份提交文件，且服务端校验发起人的仓库写入权限。
 -   [ ] Repo 动态读取所展示 Issue 的第一楼（Issue body），按 Markdown 和平台支持的扩展格式（包括视频外链）渲染；Issue 评论继续作为讨论内容。
 -   [ ] 项目页面能读取并校验 `labourchain.config.yaml`。
