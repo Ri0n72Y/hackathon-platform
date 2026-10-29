@@ -295,13 +295,13 @@ flowchart TB
 
 ### P3 GitHub Data Access
 
-**[待研究：Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)** — 根据目标仓库与 GitHub 当前 App Installation 关系动态定位获准 Installation 与仓库范围，替代固定 `GITHUB_INSTALLATION_ID`；用户 OAuth 不决定平台接入状态。
+**[初步研究完成·PoC 待验证：Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)** — 官方提供 `GET /repos/{owner}/{repo}/installation`，使用 App JWT 按目标仓库查询对应 Installation，无需预先知道 Installation ID。初步研究记录在 [Installation 动态定位研究](./github-app-installation-discovery-research.md)。该端点的 selected-repository、暂停/撤销和仓库转移行为仍需隔离环境验证；当前代码仍使用固定 `GITHUB_INSTALLATION_ID`。
 
 **[现状·技术测试已跑通]** 现有 Function 通过环境变量 `GITHUB_INSTALLATION_ID` 使用一个固定的安装实例取得 Installation Token，并读取安装授权的仓库及 Issue；这是一条已跑通的技术测试链路，**不等于**正式环境的多用户、多组织动态安装定位能力。
 
 **[约束·用户确认]** 仓库是否接入平台，完全由 GitHub 当前 App Installation 关系决定：目标仓库必须在该 Installation 获准访问的仓库集合内；不设置额外绑定记录、全局项目登记表或第二次业务绑定。用户 OAuth 不决定平台接入状态，只提供具体用户身份与交互式写入权限。用户有登录态时，按 OAuth 用户授权路径读取/同步；用户无登录态时，使用其他可行读取方式。**本轮不再比较两类读取路径**，也不将尚未研究的无登录读取方式提前写死。
 
-**[待研究]** 调查如何在不预设全局 Installation ID 的前提下，依据用户授权与目标仓库确认对应安装实例、仓库授权范围及权限变化；处理多安装、不同用户/组织以及撤销等边界。调研与验证任务见 [Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；当前文档**不预设技术解法**。
+**[研究候选·待 PoC]** 使用 App JWT 调用仓库级 Installation 查询作为平台接入判定；成功后按目标仓库和最小权限创建 Installation Token。已登录路径仍单独验证 User Token 对该仓库的访问权限，不能用用户可见的安装列表替代平台接入判定。当前未修改代码；测试用例与未决边界见 [Installation 动态定位研究](./github-app-installation-discovery-research.md)。
 
 **[用户确认·缓存积极采用]** 对 GitHub 数据的重复读取优先使用 Vercel 托管缓存加速；CDN Cache 可缓存公共完整响应，Runtime Cache 可让 Function 复用区域性临时数据。两者适用性与安全边界见 [独立调研](./vercel-functions-cache-research.md)。缓存机制、TTL 和失效效果待真实端点验证。
 
@@ -338,7 +338,7 @@ flowchart TB
 | ID | 状态 / 依据 | 尚未解决的具体问题 | 依赖与下一步 |
 | --- | --- | --- | --- |
 | **A0 文档基线一致性** | **status / Namespace 规则已在本分支同步；其他差异仍在** | 本分支已同步 MVP Product Spec §5.2、§7、§13 和 UI/UX 基线中的看板分列、归档、拖动与 URL Filter 规则；合并前 `main` 尚未包含这些修改。剩余差异是 Product Spec §2.1/§2.2/§11 的旧缓存表述、§14 的首页索引文件布局，以及仍描述旧索引仓库方向的 Issue #4。 | 后续只同步其余已确认决定，不重开已确定的 status / Namespace 语义。缓存和首页发现文档差异应分别按各自依赖处理。 |
-| **A1 GitHub Installation 与仓库授权发现** | **接入判定已确认；动态查询研究未完成：Issue #18** | 平台接入状态完全由 GitHub 当前 App Installation 关系决定：目标仓库必须在某个获准 Installation 的仓库范围内。OAuth 身份、Topic 命中和平台内部登记不决定接入状态。仍需移除固定 `GITHUB_INSTALLATION_ID`，确定如何可靠查询目标仓库对应的 Installation 与授权范围，并覆盖多安装、组织、权限变更和撤销。 | 按 Issue #18 核验 GitHub 官方查询能力与必要边界测试。OAuth 仍用于用户身份/交互式写入权限；不得与平台接入判定混为一谈。 |
+| **A1 GitHub Installation 与仓库授权发现** | **官方 API 候选已确认；PoC / App 可见性待验证：Issue #18** | GitHub 官方提供 `GET /repos/{owner}/{repo}/installation`，要求 App JWT，并返回目标仓库的 Installation 信息。研究候选为按仓库直接查询，而不是遍历全部安装，也不是用当前用户 OAuth 安装列表判断平台接入。代码仍使用固定 `GITHUB_INSTALLATION_ID`；Issue #5 历史记录称 App 当时为 private，当前可见性尚未核实。 | 按 [Installation 动态定位研究](./github-app-installation-discovery-research.md) 验证 selected repositories、安装暂停/撤销、仓库改名/转移和用户权限边界；确认跨账户安装所需的 App 可见性。完成 PoC Review 后再决定实现任务。 |
 | **A2 Topic 信息流的授权过滤** | **专项架构方案未完成：Issue #3** | GitHub Topic / Repository Search 只返回候选仓库；平台必须依据 GitHub 当前 App Installation 关系验证目标仓库是否在获准的仓库范围内。Topic 命中或当前浏览者的 OAuth 可见性不能替代这一接入判定。是否需要另行确认已接入仓库可在公开 Topic 信息流展示，仍由 Issue #3 研究；不能把“接入平台”和“公开展示许可”未经确认地合并。若无法在不建全局索引/注册表的前提下可靠验证，应后置相关过滤或信息流。分页补足、去重、Search 限流、debounce、无限下拉与错误状态也需在方案中给出。 | 依赖 A1 的安装/仓库授权模型。按 Issue #3 完成方案与 Review；该 Issue 明确要求方案通过 Review 后才开发。 |
 | **A3 Vercel 缓存的端点级策略** | **方向已确认；实现和测量未完成** | 仍需按端点区分 CDN 完整响应缓存、Runtime Cache 与不共享缓存的响应；确定安全的缓存资格、键维度、TTL、标签失效、写入后的缓存处理，以及外部 GitHub 修改造成的陈旧窗口。不能把用户会话、令牌、权限结果或写入响应放入跨用户共享缓存；不能假定设置响应头就代表命中或有性能收益。 | 缓存积极采用的倾向已确定，不再讨论“要不要缓存”。先明确授权判定边界（A1/A2），再用受控公开 GET 端点测量命中率、延迟、上游请求数与费用。详见 `vercel-functions-cache-research.md`。 |
 | **A4 Vercel Functions 的代码归属与跨运行时复用** | **边界已确认；具体布局待真实需求触发** | Functions 使用普通请求处理，不运行第二套 Cordis。仍需在具体功能出现时决定 API 入口如何组织、业务 Function 逻辑归谁维护，以及哪些纯 TypeScript 领域代码值得在浏览器与服务端之间共享。 | 不预先设计服务端插件框架或大规模目录重构。由第一个确有跨运行时复用需求的功能提出最小布局，再检查依赖方向和测试方式。 |
