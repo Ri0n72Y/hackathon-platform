@@ -1,8 +1,8 @@
 # Hackathon Platform — Architecture Map
 
-> **状态：讨论草稿 v0.2（2026-10-25）**  
+> **状态：讨论草稿 v0.2（原始版本 2026-10-25；PR #25 合并后同步 2026-10-29）**  
 > **用途：** 先建立全局拼图，再按证据和用户决策填补空缺。本文不是已生效的工程规范，也不意味着建议模块已经实现。  
-> **基线：** `Ri0n72Y/hackathon-platform` 的 `main` 分支、MVP 产品规格、Issues #1/#2/#5/#13、用户明确确认的全栈功能插件与 Playground 验收边界、Project Team v3。PR #14 不是用户确认的架构决定，不纳入此文档的决定性依据。
+> **基线：** `Ri0n72Y/hackathon-platform` 的 `main` 分支、已更新的 MVP 产品规格、Issues #1/#2/#3/#5、已合并 PR #25、用户明确确认的全栈功能插件与 Playground 验收边界。PR #14 不是用户确认的架构决定，不纳入此文档的决定性依据。
 
 ## 0. 标记方式
 
@@ -97,11 +97,11 @@ flowchart TB
 | Issue Board / Kanban | 后续独立页面中的 Issue → CardItem、按视图可选 Label Namespace 分列、置顶、Filter/URL 视图与本地手动排序；受控标签变更 | 当前为 Issue 列表与手动创建 / 评论 | [约束·用户补充] 视图规则已明确；[第一版] 看板后置，未实现 |
 | Channels | 有效频道 Issue 选择、评论与按配置启用的 Wishlist 展示 | MVP 规格 §8 | [规格已定义] 频道语义；[现状] 未实现 |
 | Labour Records（Issue 内） | 仅在当前 Issue 详情内按需解析和汇总其关联的结构化评论及 Commit 劳动来源；Board 卡片不显示劳动记录，也不做跨 Issue 统计 | MVP 规格 §9.3–9.4、后续用户范围决定 | [已确认] Issue 局部展示；整体劳动统计待自有后端阶段 |
-| Team / Members | 从仓库根目录 `team-member.json` 读取成员；显示头像并悬停查看详情。可手动维护；平台编辑由 GitHub App Bot 提交，服务端先校验发起人的仓库写入权限 | PR #25 的 MVP 规格 §10 | [规格已定义于待审 PR] 数据来源与行为明确；最小 JSON Schema 待实现前确定 |
-| Discovery / Project Search | 使用 GitHub Topic / Repository Search 查询候选公开仓库，不维护全局索引或注册表；若授权过滤需要额外全局登记数据则后置相关过滤/信息流 | PR #25 的 MVP 规格 §4.1；#3 | [方向已更新于待审 PR] 使用 GitHub 原生能力；授权过滤可行性待确认 |
+| Team / Members | 从仓库根目录 `team-member.json` 读取成员；显示头像并悬停查看详情。可手动维护；平台编辑由 GitHub App Bot 提交，服务端先校验发起人的仓库写入权限 | MVP 产品规格 §10（PR #25 已合并） | [产品范围已记录] 数据来源与行为明确；最小 JSON Schema 待实现前确定 |
+| Discovery / Project Search | 使用 GitHub Topic / Repository Search 查询候选公开仓库，不维护全局索引或注册表；若授权过滤需要额外全局登记数据则后置相关过滤/信息流 | MVP 产品规格 §4.1；Issue #3；已合并 PR #25 | [范围已记录] 使用 GitHub 原生能力；授权过滤可行性待确认 |
 | LabourChain Integration | 后续正式协议集成边界 | MVP 明确不运行完整协议 | [后续] 只预留演进位置 |
 
-| Repo Dynamics | 对动态列表中展示的每个 GitHub Issue 读取 `Issue body`，按 Markdown 与平台扩展格式（含视频外链）渲染，并保留来源 Issue 链接；评论仍作为讨论 | PR #25 的 MVP 规格 §4.2 | [设计已记录于待审 PR] 动态列表的 Issue 选择、排序、分页和刷新规则待实现时确定 |
+| Repo Dynamics | 对动态列表中展示的每个 GitHub Issue 读取 `Issue body`，按 Markdown 与平台扩展格式（含视频外链）渲染，并保留来源 Issue 链接；评论仍作为讨论 | MVP 产品规格 §4.2（PR #25 已合并） | [产品范围已记录] 动态列表的 Issue 选择、排序、分页和刷新规则待实现时确定 |
 
 **[约束·用户确认]** 功能模块沿纵向拥有自己的业务闭环与可验收行为；可依赖明确声明的共享能力。这里的功能区域不是一一对应的最终插件数，具体分合应由业务闭环、复杂度和可独立验收性共同决定。
 
@@ -267,7 +267,7 @@ flowchart TB
 
 **依据：** [Issue #2 页面与路由](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[MVP 产品规格](./LabourChain-MVP-Product-Spec.md)；当前 `main` 的 `plugins/repo-issues/src/index.ts`、`plugins/repo-panel/src/index.tsx`、`apps/playground/src/runtime.tsx`，以及本地图 P2b、P3、P4、P5a。
 
-### P2d 仓库首页：团队成员与 Issue 正文动态渲染（依据待审 PR #25 同步）
+### P2d 仓库首页：团队成员与 Issue 正文动态渲染（按已合并 PR #25 同步）
 
 **[已记录的产品决定]** 第一版 `/{owner}/{repo}` 首页采用“项目标题/简短介绍 → 团队成员头像与悬浮详情 → Repo 动态”；首页不展示 Board。独立 Kanban 路由保留，作为后续阶段实现。
 
@@ -341,7 +341,7 @@ flowchart TB
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
-| **P5 项目领域模型与配置** | **已确认**：Namespace 受管三态、config 列顺序取最大有效标签、archived 默认全视图隐藏且 Filter 可包含；跨列仅删来源列标签并加目标列标签、同 Namespace 其他标签保留；`views` 在根 config 保存 Filter；劳动记录仅在 Issue 详情聚合。**本轮同步**：团队成员改为根目录 `team-member.json`；首页动态渲染 Issue body；首页不显示 Board，Kanban 后置；MVP 不建全局项目索引。**待落实**：实现与旧规格同步 | 第 3 节 P5a–P5e、P2c–P2d；参考待审 PR #25 |
+| **P5 项目领域模型与配置** | **已确认**：Namespace 受管三态、config 列顺序取最大有效标签、archived 默认全视图隐藏且 Filter 可包含；跨列仅删来源列标签并加目标列标签、同 Namespace 其他标签保留；`views` 在根 config 保存 Filter；劳动记录仅在 Issue 详情聚合。**本轮同步**：团队成员改为根目录 `team-member.json`；首页动态渲染 Issue body；首页不显示 Board，Kanban 后置；MVP 不建全局项目索引。**待落实**：实现与旧规格同步 | 第 3 节 P5a–P5e、P2c–P2d；PR #25 已合并 |
 | **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**本次补充**：按 `agent-identity` 已有 React Coding / Review / 导航语义资料核对组件开发参考。**尚缺**：自动化测试、CI、`api/*.mjs` 专项检查与插件级独立验收；参考资料不自动成为强制项目规范 | 第 7 节，尤其 §7.4；检查能力按实际业务风险补齐，不提前新增通用框架 |
 
 ## 7. P6 AI 开发与工程检查机制（已核对现状；验证能力随实现补齐）
@@ -403,6 +403,6 @@ flowchart TB
 
 - [MVP 产品规格](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/LabourChain-MVP-Product-Spec.md)
 - [当前代码：apps/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/apps)、[plugins/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/plugins)、[api/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/api)
-- [Issue #1 技术调研](https://github.com/Ri0n72Y/hackathon-platform/issues/1)、[#2 项目页面](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[#3 Topic 信息流](https://github.com/Ri0n72Y/hackathon-platform/issues/3)、[#5 GitHub 授权研究](https://github.com/Ri0n72Y/hackathon-platform/issues/5)、[#13 Team Index](https://github.com/Ri0n72Y/hackathon-platform/issues/13)、[PR #25 团队成员与 Issue 动态渲染方案（待审）](https://github.com/Ri0n72Y/hackathon-platform/pull/25)
+- [Issue #1 技术调研](https://github.com/Ri0n72Y/hackathon-platform/issues/1)、[#2 项目页面](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[#3 Topic 信息流](https://github.com/Ri0n72Y/hackathon-platform/issues/3)、[#5 GitHub 授权研究](https://github.com/Ri0n72Y/hackathon-platform/issues/5)、[#13 Project Team 角色索引](https://github.com/Ri0n72Y/hackathon-platform/issues/13)、[PR #25 团队成员与 Issue 动态渲染方案（已合并）](https://github.com/Ri0n72Y/hackathon-platform/pull/25)
 - 用户上传的 `SKILL - team v3.md`；[agent-identity](https://github.com/Ri0n72Y/agent-identity)
 - [DSH 架构文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)、[Web Client 架构](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/web-client.md)（用于验证薄启动层和插件贡献能力的架构边界；不是照搬其部署结构）
