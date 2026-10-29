@@ -42,7 +42,7 @@ flowchart TB
     Core["薄应用核心：Cordis 初始化 / 插件装配 / 生命周期"]
     UI["UI Host 插件：React 宿主 / UI 注册"]
     Shared["基础能力插件：GitHub 身份 / 数据访问 / 配置等"]
-    Features["业务功能插件：项目主页（成员 / Issue 动态） · 频道 · 劳动记录 · Kanban（后置）"]
+    Features["业务功能插件：发现 / 主题信息流 · 项目主页（成员 / Issue 动态） · 频道 · 劳动记录 · Kanban（后置）"]
     State["前端临时状态 / UI 偏好（GitHub 数据缓存优先由 Vercel 承担）"]
     Core --> UI
     Core --> Shared
