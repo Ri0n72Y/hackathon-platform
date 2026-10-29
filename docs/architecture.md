@@ -99,9 +99,8 @@ flowchart TB
 | Labour Records（Issue 内） | 仅在当前 Issue 详情内按需解析和汇总其关联的结构化评论及 Commit 劳动来源；Board 卡片不显示劳动记录，也不做跨 Issue 统计 | MVP 规格 §9.3–9.4、后续用户范围决定 | [已确认] Issue 局部展示；整体劳动统计待自有后端阶段 |
 | Team / Members | 从仓库根目录 `team-member.json` 读取成员；显示头像并悬停查看详情。可手动维护；平台编辑由 GitHub App Bot 提交，服务端先校验发起人的仓库写入权限 | MVP 产品规格 §10（PR #25 已合并） | [产品范围已记录] 数据来源与行为明确；最小 JSON Schema 待实现前确定 |
 | Discovery / Project Search | 使用 GitHub Topic / Repository Search 查询候选公开仓库，不维护全局索引或注册表；若授权过滤需要额外全局登记数据则后置相关过滤/信息流 | MVP 产品规格 §4.1；Issue #3；已合并 PR #25 | [范围已记录] 使用 GitHub 原生能力；授权过滤可行性待确认 |
-| LabourChain Integration | 后续正式协议集成边界 | MVP 明确不运行完整协议 | [后续] 只预留演进位置 |
-
 | Repo Dynamics | 对动态列表中展示的每个 GitHub Issue 读取 `Issue body`，按 Markdown 与平台扩展格式（含视频外链）渲染，并保留来源 Issue 链接；评论仍作为讨论 | MVP 产品规格 §4.2（PR #25 已合并） | [产品范围已记录] 动态列表的 Issue 选择、排序、分页和刷新规则待实现时确定 |
+| LabourChain Integration | 后续正式协议集成边界 | MVP 明确不运行完整协议 | [后续] 只预留演进位置 |
 
 **[约束·用户确认]** 功能模块沿纵向拥有自己的业务闭环与可验收行为；可依赖明确声明的共享能力。这里的功能区域不是一一对应的最终插件数，具体分合应由业务闭环、复杂度和可独立验收性共同决定。
 
