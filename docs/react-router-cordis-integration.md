@@ -7,7 +7,7 @@
 - URL 是仓库与页面身份来源：`/`、`/:owner/:repo`、`/:owner/:repo/kanban`、`/:owner/:repo/issues/:number`。URL 中的 `owner/repo` 决定仓库，普通 Filter/排序由 Query 承载。
 - 一个浏览器 **React Root + Router**；页面功能由不同 Cordis 插件贡献，可在 Playground 按功能装配、卸载，不因 URL 数量强制一个页面一个插件。
 - Router 只做**路径匹配/导航/渲染**，不持有 GitHub 数据、不负责 OAuth 权限、不重复建立仓库选择状态；现有 API / `repoIssues` 按 URL 对应仓库读取。
-- 首页 Board 预览和独立 Kanban 共享 Board 领域逻辑；Issue 劳动历史只在 Issue 详情加载，不带入 Board。
+- 第一版仓库首页展示项目介绍、团队成员头像/悬浮详情和 Issue 正文动态，不展示 Board；独立 Kanban 路由保留为后续阶段。Issue 劳动历史只在 Issue 详情加载，不带入项目动态列表。
 - 本文讨论 **浏览器进程内的组件引用注册**。Cordis `ctx` 不跨 Vercel Function 传 React 对象，业务展示组件也不应直接接收整个 Cordis Context。
 
 ## 2. 外部依据：哪些已经验证
@@ -97,18 +97,21 @@ function RoutedPages({ ui }: { ui: ReactUIService }) {
 
 这里 `isPageEntry` / `NotFound` 是示意辅助逻辑。页面路径属于注册表元数据；**Router 不从某业务插件 import 具体 React 页面**。注册/撤销导致快照更新，`useSyncExternalStore` 触发重新匹配。已存在的 `register()` 可以在过渡期间保留；不要求现有 Playground 一次性迁移所有页面。**不再为选择这套机制另做独立 PoC；直接作为功能实现的技术基础。**
 
-### 3.2 首页如何获得另一个插件的 BoardPreview
+### 3.2 跨插件获取可复用组件（示例：团队成员与 Repo 动态）
 
-**页面注册**（把 `KanbanPage` 映射到 URL）与**嵌入组件**（首页插入 `BoardPreview`）不是同一需求。
+**页面注册**（把 `KanbanPage` 映射到 URL）与**可复用组件注册**（例如由 RepoHome 嵌入团队成员视图或 Issue 正文动态视图）是不同需求。第一版首页没有 Board 预览，因此不再将 `BoardPreview` 作为组件获取方案的示例。
 
-最小候选：仍使用 `reactUI` 的**按名称组件注册**，Board 插件贡献 `board.preview`，仓库首页插件在自己的组件树中订阅并读取该名称对应的 `ComponentType`；注册表变化后重新渲染，注销后移除该区域。旧 `register(id, Component)` 可以担当贡献入口，UI Host 不再将所有普通注册项一股脑渲染。若需便利函数，可在 `react-ui` 内增加一个读取 Hook，例如 `useRegisteredUI(ui, 'board.preview')`（**接口示意，具体名称按实现需要确定**），该 Hook 从 `getSnapshot/subscribe` 读取，不把整个 Cordis `ctx` 放进 React props，也不让首页插件运行时依赖 Board 实现模块。
+沿用 `reactUI` 的**按名称组件注册**：需要被其他功能组合的组件可注册稳定名称；RepoHome 订阅注册表并读取对应的 `ComponentType`，注册表变化后重新渲染，注销后移除该区域。示例名称如 `repo.team-members`、`repo.issue-dynamics` 仅用于说明获取方式，**不强制把成员和动态各自拆成独立插件**；实际插件边界仍按业务闭环与独立验收价值决定。若需要便利 Hook，可在 `react-ui` 内增加类似 `useRegisteredUI(ui, id)` 的读取入口（接口示意），通过 `getSnapshot/subscribe` 观察变化；不把整个 Cordis `ctx` 放进 React props，也不让首页宿主运行时 import 另一个业务插件的实现。
 
 ```text
-Board 插件 ── registerPage('board.kanban', KanbanPage) ──> Router 渲染
-          └─ register('board.preview', BoardPreview) ────> RepoHome 取组件后嵌入
+Kanban 功能 ── registerPage('board.kanban', KanbanPage) ───────────> Router 渲染（后续阶段）
+成员功能 ───── register('repo.team-members', TeamMemberView) ─────> RepoHome 取组件
+动态功能 ───── register('repo.issue-dynamics', IssueDynamicsView) ─> RepoHome 取组件
 ```
 
-某区域缺少插件时允许显示空态/入口，不建立组件注册循环依赖。**暂不引入** DSH 的 slot 定义所有权、chain、Store seat、跨包动态模块系统；如果第二个真实区域需要复杂多个贡献者，才复查是否提炼最小区域注册 API。
+成员视图读取仓库根目录 `team-member.json`，并在头像悬停时显示详细信息；Issue 动态视图读取动态列表中所展示 Issue 的 `Issue body`，按 Markdown 与平台扩展格式（包括视频外链）渲染并保留来源链接。Issue 评论仍用于讨论，不替代正文。缺少或无效的 `team-member.json`、Issue 读取失败及不支持的扩展格式需要在相应功能中提供可理解的空态/错误回退；具体 Schema 和动态列表查询/排序/分页规则不在 Router 注册层冻结。
+
+某区域缺少插件时允许显示空态/入口，不建立组件注册循环依赖。**暂不引入** DSH 的 slot 定义所有权、chain、Store seat、跨包动态模块系统；如果真实页面出现多个贡献者需要组合，再评估是否提炼最小区域注册 API。
 
 ### 3.3 生命周期与冲突约束
 
@@ -131,6 +134,6 @@ Board 插件 ── registerPage('board.kanban', KanbanPage) ──> Router 渲�
 
 ## 5. 实施验收边界（不设独立实验前置门槛）
 
-方案已选定，**无需单独创建 Router PoC 或实验任务**。开发相应页面时按常规工程质量要求检查：页面注册及卸载、唯一 ID/路径冲突、从 URL 读取仓库/Issue 参数、Filter/排序的浏览器历史与直接刷新、首页按名称嵌入 BoardPreview、无插件或路径不存在的回退，以及 Vercel 深层 URL 不吞掉 `/api/*` 或静态资源。这些是**实现验收项，不是继续选择 Router 架构的条件**。
+方案已选定，**无需单独创建 Router PoC 或实验任务**。开发相应页面时按常规工程质量要求检查：页面注册及卸载、唯一 ID/路径冲突、从 URL 读取仓库/Issue 参数、独立 Kanban 的 Filter/排序与浏览器历史、首页所需的成员/Issue 动态组件注册与注销、`team-member.json` 缺失/无效数据及 Markdown 扩展渲染失败回退、无插件或路径不存在时的反馈，以及 Vercel 深层 URL 不吞掉 `/api/*` 或静态资源。这些是**实现验收项，不是继续选择 Router 架构的条件**。
 
 **阶段结论：** DSH 和当前仓库静态源码确认了通过 `ctx` 的服务注册 React Component 的合法性；**已决定使用统一 React Router + 当前 `ReactUIService` 动态页面/组件注册**作为实施基础。尚未编写新 Router 代码或完成运行验收；不再要求架构选择前单独实验。
