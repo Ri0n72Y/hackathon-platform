@@ -295,7 +295,7 @@ flowchart TB
 
 ### P3 GitHub Data Access
 
-**[待研究：Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)** — 根据用户授权动态定位 GitHub App Installation 与可访问仓库，替代固定 `GITHUB_INSTALLATION_ID`。
+**[待研究：Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)** — 根据目标仓库与 GitHub 当前 App Installation 关系动态定位获准 Installation 与仓库范围，替代固定 `GITHUB_INSTALLATION_ID`；用户 OAuth 不决定平台接入状态。
 
 **[现状·技术测试已跑通]** 现有 Function 通过环境变量 `GITHUB_INSTALLATION_ID` 使用一个固定的安装实例取得 Installation Token，并读取安装授权的仓库及 Issue；这是一条已跑通的技术测试链路，**不等于**正式环境的多用户、多组织动态安装定位能力。
 
