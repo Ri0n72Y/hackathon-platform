@@ -356,9 +356,8 @@ labour:
 -   [ ] 仓库级 Label 定义不会被本产品自动删除。
 -   [ ] 看板只获取 Issue，不获取 PR。
 -   [ ] 看板能使用配置中声明且具有有效标签的 Namespace 分列；当前 Namespace 内多个有效标签按配置顺序取最大值归列。
--   [ ] 含 `status:archived` 的 Issue 在任何分列 Namespace 下默认隐藏，只有 Filter 明确包含 archived 后才显示。
 -   [ ] Closed Issue 默认隐藏，打开开关后可以分页查看。
--   [ ] `status:archived` 显示为默认隐藏的归档列表。
+-   [ ] 含 `status:archived` 的 Issue 在任何分列 Namespace 下默认隐藏，只有 Filter 明确包含 archived 后才显示。
 -   [ ] 频道只选择最新创建的有效 Open Issue。
 -   [ ] 删除 Wishlist 配置后，Wishlist 专用页面不再渲染。
 -   [ ] 创建 Issue、回复评论和修改 Label 时遵守 GitHub 用户权限。
