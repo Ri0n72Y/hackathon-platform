@@ -19,9 +19,9 @@
 
 ## 1. 产品及运行边界
 
-**[约束]** 平台面向黑客松团队和开源协作社区。MVP 通过公开 GitHub 仓库提供项目发现、Issue 看板、频道讨论和基础劳动记录。React 负责 UI；Cordis 负责插件及服务组织；Vercel 承载网页和 Functions；GitHub App 提供用户授权与仓库访问；GitHub 仓库是主要业务数据源；不建立传统在线业务数据库；保留 LabourChain 协议未来接入位置。
+**[约束]** 平台面向黑客松团队和开源协作社区。第一版项目主页通过公开 GitHub 仓库展示项目介绍、团队成员与 Issue 正文动态，并提供频道讨论和基础劳动记录。看板保留为独立页面，后置实现，不嵌入第一版项目主页。项目发现优先使用 GitHub Topic / Repository Search；MVP 不维护独立全局项目索引、项目注册表或跨仓库聚合数据。若授权过滤无法仅依靠 GitHub App / GitHub API 的权威数据可靠实现，则将相关过滤或信息流后置。React 负责 UI；Cordis 负责插件及服务组织；Vercel 承载网页和 Functions；GitHub App 提供用户授权与仓库访问；GitHub 仓库是主要业务数据源；不建立传统在线业务数据库；保留 LabourChain 协议未来接入位置。
 
-**[约束]** MVP 不包括私有仓库、PR 看板、跨平台 Git 适配器、持续后台同步、常驻 Worker、完整 LabourChain 协议或价值计算。细粒度权限、私有频道、独立 Thread、完整成员履历、声誉/贡献排名及完整异常诊断界面同样不在 MVP 范围；无效数据诊断界面可后置。产品规格所描述的 `labourchain.config.yaml`、`status:*`、`channel:*`、`CardItem`、`Asset` 和劳动记录属于已提出的产品/数据契约；不是已实现的代码模块。
+**[约束]** MVP 不包括私有仓库、PR 获取/看板、跨平台 Git 适配器、持续后台同步、常驻 Worker、完整 LabourChain 协议或价值计算。第一版项目主页不展示看板；独立 Kanban 页面后置实现。细粒度权限、私有频道、独立 Thread、完整成员履历、声誉/贡献排名及完整异常诊断界面同样不在 MVP 范围；无效数据诊断界面可后置。产品规格所描述的 `labourchain.config.yaml`、`status:*`、`channel:*`、`CardItem`、`Asset`、`team-member.json`、Issue 正文动态和劳动记录属于产品/数据契约；不是都已实现的代码模块。
 
 **[约束·用户确认]** 将平台设计为**全栈业务功能插件的组合**。插件围绕一个完整、可验收的业务功能，而不是单个函数、组件或 API 操作；也不应同时吞并多个复杂且完整的业务模块。插件可以按需包含 UI、Cordis 服务、领域逻辑和服务端 Function，但前后端各自的代码与运行职责须保持可辨识，不能混成不可维护的大模块。
 
@@ -42,7 +42,7 @@ flowchart TB
     Core["薄应用核心：Cordis 初始化 / 插件装配 / 生命周期"]
     UI["UI Host 插件：React 宿主 / UI 注册"]
     Shared["基础能力插件：GitHub 身份 / 数据访问 / 配置等"]
-    Features["业务功能插件：发现 · 项目 · 看板 · 频道 · 劳动记录 · 成员"]
+    Features["业务功能插件：项目主页（成员 / Issue 动态） · 频道 · 劳动记录 · Kanban（后置）"]
     State["前端临时状态 / UI 偏好（GitHub 数据缓存优先由 Vercel 承担）"]
     Core --> UI
     Core --> Shared
@@ -94,12 +94,14 @@ flowchart TB
 | GitHub Data Access | 仓库 / Issue / 评论 / Commit 的读取与错误处理；缓存优先由 Vercel 托管 | `plugins/repo-issues/`、`api/_github.mjs`、`issues.mjs` 等 | [现状] 固定 Installation ID 的测试链路；动态仓库定位 [待研究：#18] |
 | Project / Repository | 仓库级根对象、已授权安装范围、项目视图及仓库配置读取 | 当前仓库选择界面 | [规格已定义] 仓库及页面语义；[已确认] 安装授权即接入；流程待实现 |
 | Config & Label Management | 根配置解析、Namespace 三态校验、仅对受管 Issue 标签进行同步 | MVP 规格 §5–6 | [规格已定义] 管理与清理边界；[现状] 未实现完整同步 |
-| Issue Board | Issue → CardItem、按视图可选 Label Namespace 分列、置顶、Filter/URL 视图与本地手动排序；受控标签变更 | 当前为 Issue 列表与手动创建 / 评论 | [约束·用户补充] 视图规则已明确；[现状] 完整看板未实现 |
+| Issue Board / Kanban | 后续独立页面中的 Issue → CardItem、按视图可选 Label Namespace 分列、置顶、Filter/URL 视图与本地手动排序；受控标签变更 | 当前为 Issue 列表与手动创建 / 评论 | [约束·用户补充] 视图规则已明确；[第一版] 看板后置，未实现 |
 | Channels | 有效频道 Issue 选择、评论与按配置启用的 Wishlist 展示 | MVP 规格 §8 | [规格已定义] 频道语义；[现状] 未实现 |
 | Labour Records（Issue 内） | 仅在当前 Issue 详情内按需解析和汇总其关联的结构化评论及 Commit 劳动来源；Board 卡片不显示劳动记录，也不做跨 Issue 统计 | MVP 规格 §9.3–9.4、后续用户范围决定 | [已确认] Issue 局部展示；整体劳动统计待自有后端阶段 |
-| Team / Members | 可选 `team-index/` 成员索引，允许没有 GitHub 账号的参与者 | MVP 规格 §10 | [规格已定义] 最小结构；字段契约后置，未实现 |
-| Discovery / Index | 从公共索引进入项目、项目卡片 | MVP 规格定义；#4 后置 | [方向] 未实现；具体索引契约 [待决] |
+| Team / Members | 从仓库根目录 `team-member.json` 读取成员；显示头像并悬停查看详情。可手动维护；平台编辑由 GitHub App Bot 提交，服务端先校验发起人的仓库写入权限 | PR #25 的 MVP 规格 §10 | [规格已定义于待审 PR] 数据来源与行为明确；最小 JSON Schema 待实现前确定 |
+| Discovery / Project Search | 使用 GitHub Topic / Repository Search 查询候选公开仓库，不维护全局索引或注册表；若授权过滤需要额外全局登记数据则后置相关过滤/信息流 | PR #25 的 MVP 规格 §4.1；#3 | [方向已更新于待审 PR] 使用 GitHub 原生能力；授权过滤可行性待确认 |
 | LabourChain Integration | 后续正式协议集成边界 | MVP 明确不运行完整协议 | [后续] 只预留演进位置 |
+
+| Repo Dynamics | 对动态列表中展示的每个 GitHub Issue 读取 `Issue body`，按 Markdown 与平台扩展格式（含视频外链）渲染，并保留来源 Issue 链接；评论仍作为讨论 | PR #25 的 MVP 规格 §4.2 | [设计已记录于待审 PR] 动态列表的 Issue 选择、排序、分页和刷新规则待实现时确定 |
 
 **[约束·用户确认]** 功能模块沿纵向拥有自己的业务闭环与可验收行为；可依赖明确声明的共享能力。这里的功能区域不是一一对应的最终插件数，具体分合应由业务闭环、复杂度和可独立验收性共同决定。
 
@@ -170,7 +172,7 @@ flowchart TB
 | **CardItem** | 标准任务卡片**引用源 Issue**，不建立完整 Issue 快照；允许预留少量 `patch?: Partial<CardItem>` | 完整 Patch 系统、以本地 Patch 静默覆盖 GitHub 权威字段 |
 | **Asset** | 表示实际文件/资产；MVP 至少覆盖 GitHub Commit Asset，可由仓库与 Commit SHA 定位，保留原始地址、作者、提交者、时间及消息等来源信息 | 提前要求所有 Asset 都有 Commit，或实现非 Git 适配器 |
 | **Labour Record** | 来源于 Commit Message 或结构化 Issue 评论，可关联多个 Commit Asset；本阶段仅在**所属 Issue 详情**读取、展示和局部汇总 | 必须关联 Commit、价值计算、看板卡片劳动摘要、跨 Issue/仓库/平台整体统计 |
-| **Team Member** | 可选 `team-index/`：每人一个 Markdown，另有总 `index`；成员可无 GitHub 账号，也可为 Bot、设计、运营等贡献者 | 完整电子简历 Schema、以 GitHub 账号作为唯一成员身份 |
+| **Team Member** | 仓库根目录可选 `team-member.json` 是团队成员数据权威来源；成员可无 GitHub 账号，头像悬停展示详情 | 最小 JSON Schema、头像/成员标识规则、完整电子简历、以 GitHub 账号作为唯一成员身份 |
 
 **[劳动记录范围·用户已确认]** 继续沿用 GitHub Issue 结构化评论与 Git Commit Message 的现有独立 Labour Record 规则：工时是主观估计，发表时间不等于劳动发生时间，记录不强制关联 Commit。**本阶段仅在单个 Issue 详情页展示及汇总该 Issue 关联的劳动记录**（例如 Issue 内的成果与主观登记工时）；**Board/CardItem 不显示 Labour Record、`outcome`、记录作者或累计工时**，不执行**跨 Issue、仓库、平台的整体劳动统计**，不为此扫描所有卡片评论或遍历仓库 Commit。整体劳动统计等**未来自有后端**建立后再设计。旧 MVP §9.4 的 YAML 示例不能代替现行独立记录规则；此处不重设计解析协议，也不接入完整 LabourChain 协议或价值计算。
 
@@ -182,13 +184,13 @@ flowchart TB
 
 **[规格已定义·身份]** 仓库接入发起者须具有相应的 Owner / Maintainer 权限（实际 GitHub App 安装/授权能力以 GitHub 结果为准）；普通交互式写入使用授权用户令牌，并接受 GitHub 用户权限及 App 授权范围限制；匿名用户可以浏览**已经接入平台的公开项目**，未安装授权的任意 GitHub 仓库不因此成为平台项目。服务器秘密不能进入浏览器。
 
-**[规格已定义·项目入口]** 规格曾定义首页使用公共索引仓库驱动项目发现，项目详情拥有概览、看板、频道、劳动记录、成员视图；看板和频道属于独立视图，同一 Issue 可以在两边出现。**发现页、索引格式与推荐策略属于独立产品工作**，本地图仅标其边界，不在当前架构讨论中扩大范围。
+**[规格已更新·项目入口，来源 PR #25]** 第一版项目主页按“项目标题/简短介绍 → 团队成员头像与悬浮详情 → Repo 动态”组织，不展示 Board；Kanban 保留为独立后续页面。项目发现使用 GitHub Topic / Repository Search，不建立额外全局索引或注册表；如果授权过滤无法依靠 GitHub App / GitHub API 的权威数据可靠实现，则将相关过滤或信息流后置。项目主页动态读取所展示 Issue 的第一楼（`Issue body`）并按 Markdown/平台扩展格式渲染，评论继续用于讨论；MVP 不获取 PR，也不把 Commit Message、PR 事件和 Issue 更新事件混合成动态流。看板与频道在后续看板实现后仍是不同视图，同一 Issue 可在符合规则时分别出现。
 
 **[已确认·实现方式]** 浏览器使用 React + Cordis；Vercel Functions 处理需要受控服务器环境的 OAuth、校验和 GitHub 写入。配置解析、Namespace 匹配、状态过滤、频道选择等领域计算优先使用易测试的纯 TypeScript 逻辑；不因预留未来能力而创建多平台适配层或服务端 Cordis 运行时。
 
 **[用户确认·缓存倾向]** 应积极利用缓存以加速用户访问并减少重复、缓慢的 GitHub API 请求。优先调研并利用 Vercel Functions/CDN 托管缓存，具体方案在验证安全性、成本与效果后确定。旧 MVP 规格 §2.2/§11 的浏览器缓存/“无服务端共享缓存”表述与 Vercel Runtime Cache 能力存在差异；见 [Vercel Functions 缓存调研](./vercel-functions-cache-research.md)，待修订旧规格。
 
-**[实现待定而非架构空白]** 根配置完整 Schema、成员索引字段、劳动 YAML 的解析实现、项目索引文件布局、Commit 分页与增量发现、标签同步的部分失败重试细节、频道初始化交互及实际 GitHub/Vercel 集成验收，均属于后续开发/专项验证，不要求在 Architecture Map 中先选择技术实现。
+**[实现待定而非架构空白]** 根配置完整 Schema、`team-member.json` 的最小 JSON Schema 与缺失/无效数据处理、劳动记录的解析实现、Repo 动态列表的 Issue 选择/排序/分页/刷新及 Markdown 扩展渲染失败回退、GitHub Topic/Search 分页与授权过滤可行性、标签同步的部分失败重试、频道初始化交互及实际 GitHub/Vercel 集成验收，均属于后续开发/专项验证，不要求在 Architecture Map 中先选择技术实现。MVP 不再规划项目索引文件布局。
 
 ## 4. 平台核心与插件归属（P2 已确认）
 
@@ -234,8 +236,8 @@ flowchart TB
 
 **[用户已确认·方案 A]** URL 中的 `owner/repo` **直接决定要读取哪个仓库**；首页、专注看板和 Issue 详情无需再设计第二套仓库选择机制。平台入口的仓库选择器只需导航到相应 URL，而不是通过全局唯一的可变 `selected` 驱动页面。看板按该 URL 指定仓库请求既有 API，**获取该仓库的 Issue 列表**，再按配置/Namespace 转换为 CardItem；进入某个 Issue 页面时才单独按需读取其详情、评论和劳动记录。无需因此新建 Cordis Context、插件实例、Repo Context 或独立「仓库服务契约」设计任务。
 
-**[已确认·Issue #2，按最新看板决策同步]** `/` 是平台入口；`/{owner}/{repo}` 为单仓库项目首页（Title/简要介绍 → **限高 Board 预览** → Repo 动态）；`/{owner}/{repo}/kanban` 为信息更完整的独立看板，支持适用的 URL Filter；`/{owner}/{repo}/issues/{number}` 是独立 Issue 详情。首页预览与专注 Kanban 是**同一 Board 功能及来源数据的两种呈现**，不据此建立两个业务插件。页面支持直达、刷新和浏览器前进后退；URL 只定位资源，不代表 App 已安装或用户已获写入权限。两处 Board 都按本地图 P5a 采用**配置中声明且有效的可选 Namespace 分列**，跨列写入也只作用于当前所选 Namespace，不恢复旧的固定 `status:*` 描述。
-**[首页 Repo 动态·已确认候选来源]** 选取**最近合并的 PR、近期 Commit Message、最近更新的 Issue、新建的 Issue**，由对应 GitHub 来源按需读取；不据此建立劳动记录跨 Issue 聚合。精确事件合并/去重、数量及展示样式等随页面功能实现再决定。
+**[已确认·Issue #2，按 PR #25 的首页范围更新]** `/` 是平台入口；`/{owner}/{repo}` 为单仓库项目首页（项目标题/简短介绍 → 成员头像悬浮详情 → Repo 动态），第一版不展示 Board；`/{owner}/{repo}/kanban` 保留为独立 Kanban 页面并后置实现，未来支持适用的 URL Filter；`/{owner}/{repo}/issues/{number}` 是独立 Issue 详情。页面支持直达、刷新和浏览器前进后退；URL 只定位资源，不代表 App 已安装或用户已获写入权限。P5a 中的 Namespace 分列、置顶、Filter 和手动排序规则仅在独立 Kanban 实现时适用。
+**[Repo 动态·按 PR #25 同步]** 动态条目来自 GitHub Issue；读取每条所展示 Issue 的第一楼（`Issue body`），按 Markdown 和平台支持的扩展格式（包括视频外链）渲染，并保留原 Issue 来源链接。Issue 评论仍用于讨论，不替代正文。MVP 不获取 PR，也不再采用“最近合并 PR、Commit Message、最近更新/新建 Issue 事件混合成流”的旧候选。具体选择哪些 Issue、排序、分页、刷新及扩展格式的失败回退尚未冻结；这不是劳动记录跨 Issue 聚合。
 
 **[基于现状的最小职责建议；不冻结接口/包布局]**
 
@@ -244,7 +246,7 @@ flowchart TB
 | 页面 / 路由组合 | 从 URL 取当前 `owner/repo`、可选 Issue 编号及视图参数；提供页面与仓库上下文给使用者 | GitHub 权威数据、全局仓库选择状态或最终授权判断 |
 | 数据读取（现有 Cordis 能力与 API） | **直接按 URL 提供的 `owner/repo` 请求该仓库的 Issue 列表**，按需读取配置；详情页再读取指定 Issue 及评论，处理基本加载/错误反馈 | 额外的全局仓库选择、为本流程创建通用「数据服务契约」或全局同步框架 |
 | 配置判定 | 解析 `labourchain.config.yaml` 并按受管 Namespace 规则提供有效性判定；先考虑纯函数或已有数据能力内部逻辑 | 无需求时另建独立基础插件 |
-| Board 业务插件 | 对选中仓库做 Issue → CardItem、分列与 Filter 投影；复用逻辑服务首页预览和独立 Kanban | GitHub 用户授权、独立的 Issue 权威副本、劳动记录读取和卡片劳动统计 |
+| Board / Kanban 业务插件 | 后续独立 Kanban 页面中的 Issue → CardItem、分列与 Filter 投影；执行受控标签变更 | 第一版项目主页、GitHub 用户授权、独立的 Issue 权威副本、劳动记录读取和卡片劳动统计 |
 | Channels / 其他业务插件 | 用相同仓库身份访问来源数据，各自解释频道及其他领域规则 | 为共享 Issue 人为复制第二个 GitHub 对象 |
 | React UI Host | 在**唯一 React Root** 中组合、注册和注销业务 UI | 读取 GitHub 或接管业务规则 |
 | 用户写入 Function | 对明确仓库/Issue 的每次写入重新校验会话、安装范围与用户权限；返回权威结果和错误 | 信任 URL 或前端按钮状态为权限依据 |
@@ -254,16 +256,30 @@ flowchart TB
 1. **资源身份属 URL。** 路由改变即切换仓库或对象；`/` 的仓库列表仅用于发现/导航，不是所有页面必经的数据来源。
 2. **来源数据跟随 URL。** 看板读取目标仓库的 Issue 列表；切换仓库时，不让之前仓库的迟到响应误显示在新页面。继续利用现有请求版本检查等简单手段即可，不引入新的同步服务或独立的服务契约设计。
 3. **领域状态由业务解释。** Board 使用来源 Issue 与有效配置生成列和卡片；缺配置/配置无效、加载中、无匹配 Issue、未授权、读取失败是不同的界面情况，不能一律作为“没有卡片”。
-4. **可恢复的视图条件属 URL。** 首页看板预览和 Kanban 之间继承适用的 Namespace / Filter 等查询条件（P5a、Issue #2）。同列手动排序会清空 Filter，临时顺序仅在当前页面会话内生效、不能分享，刷新或重新应用筛选/排序后重置；弹窗、编辑草稿及视觉交互属于组件局部状态，非 GitHub 来源数据。
+4. **可恢复的视图条件属 URL。** 独立 Kanban 实现后，其 Namespace / Filter 等适用查询条件由 URL 承载（P5a、Issue #2）；第一版项目主页没有 Board 预览，不继承看板视图状态。同列手动排序会清空 Filter，临时顺序仅在当前页面会话内生效、不能分享，刷新或重新应用筛选/排序后重置；弹窗、编辑草稿及视觉交互属于组件局部状态，非 GitHub 来源数据。
 5. **写入确认与读取可见性分开。** 浏览公开已接入项目不要求登录，写入仍经受控 API 校验身份与权限。**是否写入成功以 GitHub 写入 API 的实际结果为准**；后续通过读取 API 获取新数据。用户实测写入后数据在读取结果中可能**延迟约 1–2 分钟才可见**，当前阶段接受这一延迟，不承诺立即同步或为了它增加 WebSocket、持续轮询、复杂前端一致性机制。写入失败、超时或部分失败仍须明确反馈，不把不确定结果当成功；可按需刷新。
 
-**[最小贯通过程]** 访问仓库 URL → 据 `owner/repo` 请求 API 获取**该仓库的 Issue 列表**及必要配置 → Board 生成卡片与列 → 点击卡片进入独立 Issue URL，仅按需读取**该 Issue** 的讨论与劳动历史 → 授权用户通过 API 写入 GitHub → API 确认写入结果，后续重新读取（可能延迟约 1–2 分钟可见）。**Board 不批量读取劳动记录**；权限/安装范围校验不因 URL 或缓存而省略。
+**[最小贯通过程]** 访问仓库首页 URL → 据 `owner/repo` 读取仓库介绍、可选的 `team-member.json` 和动态列表所需的 GitHub Issues → 展示成员头像/悬浮详情，并将每条动态对应的 Issue body 按 Markdown/扩展格式渲染，保留来源链接。动态列表具体 Issue 选择和排序规则留待实现时确定。后续独立 Kanban 页面按同一 URL 作用域请求 Issue 列表及配置 → 生成 CardItem 与列 → 点击卡片进入独立 Issue URL，按需读取该 Issue 的讨论与劳动历史 → 授权用户通过 API 写入 GitHub → API 确认写入结果，后续重新读取（可能延迟约 1–2 分钟可见）。**Board 不批量读取劳动记录**；权限/安装范围校验不因 URL 或缓存而省略。
 
-**[当前代码差距]** `RepoIssuesService` 目前用 `State.selected`、`select(fullName)` 和 `refresh()` 合并仓库列表、选择与 Issue 读取；`apps/playground/src/runtime.tsx` 也会在启动时全局 `refresh()`。现有 `RepoPanel`、`IssueWorkspace` 仍有直接访问部分 `/api/github-*` 的路径。可复用其 `getSnapshot/subscribe`、`revision` 防过期响应、UI 注册与 `ctx.effect()`；不因为方案 A 而重建整个服务。当前返回的 Issue 摘要缺少 Board 所需的标签与配置数据，真正的页面路由、配置加载和看板尚未实现。
+**[当前代码差距]** `RepoIssuesService` 目前用 `State.selected`、`select(fullName)` 和 `refresh()` 合并仓库列表、选择与 Issue 读取；`apps/playground/src/runtime.tsx` 也会在启动时全局 `refresh()`。现有 `RepoPanel`、`IssueWorkspace` 仍有直接访问部分 `/api/github-*` 的路径。可复用其 `getSnapshot/subscribe`、`revision` 防过期响应、UI 注册与 `ctx.effect()`；不因为方案 A 而重建整个服务。当前页面路由、`team-member.json` 读取、Issue body 的 Markdown/扩展渲染及独立 Kanban 均未实现；Kanban 已明确后置，首页动态列表所需的 Issue 选择与分页规则仍待实现时细化。
 
 **[设计结论与实施边界]** URL 选仓库、API 读 Issue 列表、受控 API 写 GitHub、允许短暂读取延迟，这几项已明确，不再单列为待讨论的「仓库数据服务契约」。实现时按现有 `RepoIssuesService` 与页面需要调整即可；不在此预定路由库、服务方法签名、插件拆包、缓存 TTL/Key 或通用全局 Store/事件总线。
 
 **依据：** [Issue #2 页面与路由](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[MVP 产品规格](./LabourChain-MVP-Product-Spec.md)；当前 `main` 的 `plugins/repo-issues/src/index.ts`、`plugins/repo-panel/src/index.tsx`、`apps/playground/src/runtime.tsx`，以及本地图 P2b、P3、P4、P5a。
+
+### P2d 仓库首页：团队成员与 Issue 正文动态渲染（依据待审 PR #25 同步）
+
+**[已记录的产品决定]** 第一版 `/{owner}/{repo}` 首页采用“项目标题/简短介绍 → 团队成员头像与悬浮详情 → Repo 动态”；首页不展示 Board。独立 Kanban 路由保留，作为后续阶段实现。
+
+**[团队成员数据]** 仓库根目录的可选 `team-member.json` 是该 Repo 团队成员信息的权威来源。页面显示成员头像，悬停时展示文件中的详细信息。项目参与者可直接手动维护文件；通过平台编辑时，由 GitHub App Bot 身份提交文件变更，服务端在写入前验证发起用户对该仓库的写入权限。文件缺失/无效数据的呈现、成员标识、头像来源和最小 JSON Schema 尚未冻结；实现前需定义最小契约，确保手动维护和平台写入产生相同可读取格式。该文件不建立独立账号系统，也不授予额外权限。
+
+**[Repo 动态数据与渲染]** 动态条目对应 GitHub Issue；读取动态列表中所展示 Issue 的第一楼（`Issue body`），按 Markdown 文档和平台支持的扩展格式渲染，包括视频外链。每条动态保留来源 Issue 链接；Issue 评论仍用于讨论，不替代第一楼正文。MVP 不获取 PR，也不把 PR 合并事件、Commit Message 和 Issue 创建/更新事件混合为活动流。具体显示哪些 Issue、排序、分页、刷新、允许的扩展格式与渲染失败回退尚待实现时确定。
+
+**[发现范围与数据源]** MVP 优先使用 GitHub Topic / Repository Search 查询候选公开仓库，不维护独立全局项目索引、项目注册表或跨仓库聚合数据。如果“仅显示已接入平台的仓库”无法通过 GitHub App / GitHub API 的权威数据可靠验证，而必须依赖额外的全局登记数据，则将相关授权过滤或信息流后置，不以自建全局数据补足。
+
+**[实现边界]** 以上是页面内容、来源与权限边界，不冻结 `team-member.json` Schema、动态列表查询/排序算法、Markdown 扩展实现或独立 Kanban 的组件布局。它们属于具体功能实现与验收事项，不构成另建全局索引或活动聚合服务的理由。
+
+---
 
 ### 尚未确定的技术边界
 
@@ -292,7 +308,9 @@ flowchart TB
 
 ### P4 身份与用户写入边界（机制已确定；真实环境验证待完成）
 
-**[约束·用户确认 / MVP §3]** GitHub App 安装并授予仓库权限是项目接入行为；**用户 OAuth 授权**是具体用户的身份与交互式写入凭据，两者不是同一个许可。交互式创建 Issue、评论、修改受管 Label、配置写入均应使用**用户授权身份**并遵守 GitHub 用户及 App 的有效权限；不得以 Installation Token 替代用户身份绕过拒绝。浏览器不得持有 App 私钥、Client Secret 或可直接读取的用户令牌。未登录用户可以浏览已接入的公开项目，但不具备用户写入会话。
+**[约束·用户确认 / MVP §3]** GitHub App 安装并授予仓库权限是项目接入行为；**用户 OAuth 授权**是具体用户的身份与交互式写入凭据，两者不是同一个许可。交互式创建 Issue、评论、修改受管 Label、配置写入均遵循用户授权身份及 GitHub 用户/App 的有效权限；不得以 Installation Token 替代用户身份绕过拒绝。浏览器不得持有 App 私钥、Client Secret 或可直接读取的用户令牌。未登录用户可以浏览已接入的公开项目，但不具备用户写入会话。
+
+**[局部写入例外·来源 PR #25]** 用户通过平台编辑仓库根目录 `team-member.json` 时，由 GitHub App Bot 身份提交文件变更；服务端必须在写入前验证发起用户对目标仓库的写入权限。该规则仅适用于此文件编辑流程，不自动改变 Issue 创建、评论、Label 或配置写入的既有用户身份规则。不得将 Bot 的安装范围当作用户授权校验的替代品。
 
 **[现状·OAuth 与会话]** `api/github-login.mjs`、`github-callback.mjs`、`_oauth.mjs` 实现了 GitHub App OAuth 授权码流程、`state` 校验、PKCE S256、服务端 code 交换，以及 AES-GCM 密封的 `__Host-` 前缀 HttpOnly / Secure / SameSite=Lax Cookie。当前会话保存有时限的用户访问令牌（最长 8 小时），**不保存 Refresh Token**；`api/github-session.mjs` 提供不暴露令牌的登录态查询。上述是当前代码策略，不应写成已验证的多设备刷新、密钥轮换或即时吊销能力。
 
@@ -323,7 +341,7 @@ flowchart TB
 | **P2b 插件依赖与公开契约** | **已验证**：Cordis `inject` 与生命周期承担运行依赖；插件通过公开服务协同，Playground 用依赖组合/受控替身验收；**待细化**：具体接口和场景格式 | **已填写第 4 节**，不引入第二套依赖框架 |
 | **P3 GitHub 数据访问与缓存** | **已确认**：App 安装即接入；登录态使用用户 OAuth 授权路径、无登录态另行读取；**待研究**动态 Installation（#18）。**缓存倾向**：积极使用 Vercel 原生缓存加速公共访问、减少 GitHub 重复请求；安全与失效待验证 | 第 5 节 P3/P3b；[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)；[缓存调研](./vercel-functions-cache-research.md) |
 | **P4 身份与写操作边界** | **已确认**：用户 OAuth 身份执行交互式写入，App 安装授予仓库范围；**已有代码**：State/PKCE、加密 Cookie、Issue 创建与评论。**待验收/实现**：会话和权限安全测试、Label 与配置写入、冲突与失败路径（安装动态定位单列 #18） | 第 5 节 P4 已填写；复用 [Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5) 的验收研究 |
-| **P5 项目领域模型与配置** | **已确认**：Namespace 受管三态、config 列顺序取最大有效标签、archived 默认全视图隐藏且 Filter 可包含；跨列仅删来源列标签并加目标列标签、同 Namespace 其他标签保留；`views` 在根 config 保存 Filter；劳动记录仅在 Issue 详情聚合。**待落实**：具体实现与旧 MVP 规格同步 | 第 3 节 P5a–P5e、P2c；不提前冻结实现接口 |
+| **P5 项目领域模型与配置** | **已确认**：Namespace 受管三态、config 列顺序取最大有效标签、archived 默认全视图隐藏且 Filter 可包含；跨列仅删来源列标签并加目标列标签、同 Namespace 其他标签保留；`views` 在根 config 保存 Filter；劳动记录仅在 Issue 详情聚合。**本轮同步**：团队成员改为根目录 `team-member.json`；首页动态渲染 Issue body；首页不显示 Board，Kanban 后置；MVP 不建全局项目索引。**待落实**：实现与旧规格同步 | 第 3 节 P5a–P5e、P2c–P2d；参考待审 PR #25 |
 | **P6 AI 开发与工程验证** | **已具备**：`AGENTS.md` 工程入口、Issue/PR 权威记录、决策权限与独立 Review 边界、`npm run build`（TS 检查 + Vite 构建）。**本次补充**：按 `agent-identity` 已有 React Coding / Review / 导航语义资料核对组件开发参考。**尚缺**：自动化测试、CI、`api/*.mjs` 专项检查与插件级独立验收；参考资料不自动成为强制项目规范 | 第 7 节，尤其 §7.4；检查能力按实际业务风险补齐，不提前新增通用框架 |
 
 ## 7. P6 AI 开发与工程检查机制（已核对现状；验证能力随实现补齐）
@@ -381,10 +399,10 @@ flowchart TB
 
 本文仅提交架构讨论草稿，不修改业务代码，也不直接改变 `main`。合并及后续规范化需要 Lead 与用户确认；现有 Issues 和 PR 是工作事实的唯一 GitHub 记录位置，不另建影子任务板。
 
-## 依据（截至 2026-10-25）
+## 依据（截至 2026-10-29）
 
 - [MVP 产品规格](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/LabourChain-MVP-Product-Spec.md)
 - [当前代码：apps/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/apps)、[plugins/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/plugins)、[api/](https://github.com/Ri0n72Y/hackathon-platform/tree/main/api)
-- [Issue #1 技术调研](https://github.com/Ri0n72Y/hackathon-platform/issues/1)、[#2 项目页面](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[#5 GitHub 授权研究](https://github.com/Ri0n72Y/hackathon-platform/issues/5)、[#13 Team Index](https://github.com/Ri0n72Y/hackathon-platform/issues/13)
+- [Issue #1 技术调研](https://github.com/Ri0n72Y/hackathon-platform/issues/1)、[#2 项目页面](https://github.com/Ri0n72Y/hackathon-platform/issues/2)、[#3 Topic 信息流](https://github.com/Ri0n72Y/hackathon-platform/issues/3)、[#5 GitHub 授权研究](https://github.com/Ri0n72Y/hackathon-platform/issues/5)、[#13 Team Index](https://github.com/Ri0n72Y/hackathon-platform/issues/13)、[PR #25 团队成员与 Issue 动态渲染方案（待审）](https://github.com/Ri0n72Y/hackathon-platform/pull/25)
 - 用户上传的 `SKILL - team v3.md`；[agent-identity](https://github.com/Ri0n72Y/agent-identity)
 - [DSH 架构文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)、[Web Client 架构](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/web-client.md)（用于验证薄启动层和插件贡献能力的架构边界；不是照搬其部署结构）
