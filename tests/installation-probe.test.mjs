@@ -153,3 +153,12 @@ test('installation response must belong to the requested owner', async () => {
   await assert.rejects(inspectInstallation({ owner: 'octocat', repo: 'hello', env, fetcher: m.fetcher }),
     error => error instanceof ProbeError && error.status === 502)
 })
+
+test('repository metadata must match the exact requested target', async () => {
+  const m = mock({ '/repos/octocat/hello': respond(200, {
+    ...publicRepo(), full_name: 'octocat/somewhere-else',
+  }) })
+  await assert.rejects(inspectInstallation({ owner: 'octocat', repo: 'hello', env, fetcher: m.fetcher }),
+    error => error instanceof ProbeError && error.status === 502)
+  assert.equal(m.calls.length, 1)
+})
