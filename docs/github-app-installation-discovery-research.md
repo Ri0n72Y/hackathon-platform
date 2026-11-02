@@ -1,7 +1,7 @@
 # GitHub App Installation 动态定位研究
 
 - 日期：2026-10-29（2026-11-02 根据用户确认补充流程决定）
-- 状态：用户流程与接入判定已确认；动态 Installation API 属候选技术方案，真实 Installation / Vercel 验证尚未执行
+- 状态：用户流程与接入判定已确认；PR #26 已加入隔离的只读实验代码与 Mock 测试；真实 Installation / Vercel 验证尚未执行
 - 关联：[Issue #18](https://github.com/Ri0n72Y/hackathon-platform/issues/18)、[Issue #1](https://github.com/Ri0n72Y/hackathon-platform/issues/1)、[Issue #3](https://github.com/Ri0n72Y/hackathon-platform/issues/3)、[Issue #5](https://github.com/Ri0n72Y/hackathon-platform/issues/5)
 - 范围：只研究安装关系与目标仓库的动态解析；不修改业务代码，不调整 GitHub App 设置，不讨论缓存实现。
 
@@ -220,6 +220,46 @@ GitHub 官方说明：private GitHub App 只能安装到 App 所属账户；publ
 - 读取/写入请求应如何处理 Installation 查询的重复调用；缓存与 TTL 留给既有缓存研究，不在本 Issue 定案。
 
 本研究已记录用户确认的 OAuth 登录与仓库接入顺序，同时将官方 API 契约、技术候选方案及待验证事项分开标注；**并不授权业务代码改造或变更 GitHub App 设置**。如需实施，另行核实权限和回跳行为并确定开发任务。
+
+## 9. PR #26 的只读代码实验（2026-11-02）
+
+用户确认：**不为“账户已安装但仓库未获准”自研 GitHub 原生授权范围变更的替代机制**。LabourChain 只识别状态并引导 GitHub 安装管理页；此前 P0-3 与 P2 提到的直接 `PUT /user/installations/{installation_id}/repositories/{repository_id}` 视为同一后置优化，本 PR **不实现该 PUT、不申请额外安装范围写权限**。这不阻碍验证动态 Installation 识别。
+
+### 文件及作用
+
+| 文件 | 实验能力 |
+| --- | --- |
+| `api/_installation-probe.mjs` | App JWT 签名、公开仓库信息读取、仓库级/账户级 Installation 查询、安全的 GitHub 安装/管理跳转 URL 校验。仅使用 GET，不创建 Installation Token，不修改权限。 |
+| `api/github-installation-probe.mjs` | 只读 Vercel Function。要求现有 OAuth 会话和预设来源，返回接入状态；响应禁用缓存，不将 Installation ID、App JWT 或用户令牌返回给浏览器。 |
+| `apps/playground/public/installation-probe.html` | Vite Playground 的独立实验页。用户先 OAuth 登录，输入 `owner/repo`，由 Function 检查状态；需要授权时打开 GitHub 的安装页/管理页，用户返回后重新查询。仓库名仅保存在当前标签页的 sessionStorage 用于手动恢复；不保存令牌。 |
+| `tests/installation-probe.test.mjs` | Node 内置测试，Mock GitHub API 响应，覆盖已接入、选定仓库未授权、未安装、暂停、异常响应、错误链接和输入校验。 |
+
+### 本地 Mock 检查
+
+在仓库根目录执行：
+
+```bash
+npm run test:installation
+```
+
+本地隔离副本使用 Node.js 22 执行：**11 个测试通过，0 个失败**。这验证了模拟响应下的分支判定与 JWT 签名逻辑；不是实时 GitHub API、OAuth 回调或 Vercel 部署验收。由于尚未检查完整项目的依赖与构建产物，**本轮未声称 `npm run build` 通过**。
+
+### 真实实验的前提和操作（尚未执行）
+
+1. 使用有权限的隔离 GitHub App 与公开测试仓库，配置已有 OAuth Function 所需的 `GITHUB_APP_CLIENT_ID`、`GITHUB_APP_CLIENT_SECRET`、`GITHUB_OAUTH_CALLBACK_URL`、`GITHUB_OAUTH_COOKIE_KEY`，及 App JWT 的 `GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`。可选 `GITHUB_APP_SLUG`；不设置时，Function 用 App JWT 调用 `GET /app` 取得 slug。**不再要求实验 Function 配置 `GITHUB_INSTALLATION_ID`**；其他旧的生产 Function 仍可能依赖它，不在本 PR 改造。
+2. 将 OAuth callback 配到实际测试域名，并验证现有 `state` / PKCE / Cookie 流程；不要假定任意 Vercel Preview URL 自动符合当前 OAuth 源校验。
+3. 构建并部署当前 PR 的隔离测试版本，访问 `/installation-probe.html`，登录后输入公开 `owner/repo`。页面调用 `GET /api/github-installation-probe?owner=...&repo=...`。
+4. 验证状态：`connected`、`needs_installation`、`needs_repository_authorization`、`installation_suspended`、`repository_unavailable`；检查 GitHub 管理链接只指向 `https://github.com`。对未安装/未授权仓库，完成 GitHub 原生授权后返回并**主动重新检查**；不得仅依据 Setup URL 查询参数判定成功。
+5. 实测 GitHub 401/403/404、selected repositories、组织审批、撤销与限流等边界；记录 HTTP 状态与非秘密字段，不记录令牌和私钥。
+
+### 安全边界与不在本实验范围内的内容
+
+- **只读、隔离**：实验不调用安装仓库的 PUT API，不运行自动安装、不修改 GitHub App 可见性、OAuth 设置或 Installation 授权。
+- **无持久 ID**：目标仓库的 Installation 由 App JWT + GitHub API 实时查询，不把固定 ID 或仓库→Installation ID 映射作为接入事实来源。
+- **权限分离**：会话存在只决定用户进入实验页的条件，平台接入仍由 App Installation 判定；本实验**不执行用户写入**，也不替代现有 Issue 写入路径的授权检查。
+- **公共仓库实验**：先通过无授权的公开 Repository API 检查仓库（存在 GitHub 匿名 API 速率限制），只有确认是公开仓库才继续 App JWT 查询。异常响应不会当作“未安装”。
+- **未实现自动回跳完成**：GitHub App Setup URL / Redirect on update 仍需管理员实际配置并验收；页面目前只提供回到实验页后的手动复查。
+- **仍有生产代码缺口**：`api/_github.mjs`、`api/github-verify.mjs`、`api/_issue-interaction.mjs` 等旧路径仍用固定 Installation ID；本实验不直接替换，以免把 Mock 验证误认为生产安全验收。
 
 ## 官方资料
 
