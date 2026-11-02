@@ -1,0 +1,251 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 28px 80px;
+  background: #0b0d12;
+  color: #f2f4f8;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  min-height: 100vh;
+}
+.headCard,
+.projectCard,
+.empty,
+.error {
+  border: 1px solid #29303c;
+  background: #11151d;
+  border-radius: 24px;
+  box-shadow: 0 18px 60px #0005;
+}
+.headCard {
+  display: flex;
+  min-height: 300px;
+  overflow: hidden;
+  margin-bottom: 48px;
+}
+.headCard img {
+  width: 42%;
+  object-fit: cover;
+  background: #171c25;
+}
+.headCopy {
+  padding: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #8d9aaf;
+  font-weight: 700;
+}
+.headCopy h1 {
+  font-size: clamp(34px, 6vw, 72px);
+  line-height: 0.98;
+  margin: 16px 0;
+}
+.headCopy p,
+.markdownBody {
+  max-width: 680px;
+  color: #b4bdcb;
+  line-height: 1.7;
+}
+.markdownBody h2,
+.markdownBody h3 {
+  color: #f2f4f8;
+  margin: 18px 0 8px;
+}
+.markdownBody ul,
+.markdownBody ol {
+  padding-left: 24px;
+}
+.markdownBody code {
+  font-family: ui-monospace, monospace;
+  background: #1c2430;
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+.markdownBody pre {
+  overflow: auto;
+  background: #0a0d12;
+  padding: 14px;
+  border-radius: 10px;
+}
+.headCopy a,
+.projectCard a,
+.error a {
+  color: #a78bfa;
+  text-decoration: none;
+  font-weight: 700;
+}
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.sectionHeading h2 {
+  font-size: 30px;
+  margin: 8px 0 0;
+}
+.count,
+.note {
+  color: #8d9aaf;
+  font-size: 13px;
+}
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+.projectCard {
+  flex: 1 1 280px;
+  min-width: 250px;
+  max-width: 380px;
+  padding: 22px;
+  display: flex;
+  gap: 16px;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
+}
+.projectCard:hover {
+  transform: translateY(-4px);
+  border-color: #8b5cf6;
+}
+.projectMark {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #7c3aed, #22d3ee);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+.projectContent {
+  min-width: 0;
+}
+.cardMeta {
+  font-size: 12px;
+  color: #8d9aaf;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.projectCard h3 {
+  font-size: 21px;
+  margin: 12px 0 8px;
+  overflow-wrap: anywhere;
+}
+.projectCard p {
+  color: #b4bdcb;
+  line-height: 1.5;
+  min-height: 44px;
+}
+.skeleton {
+  height: 190px;
+  flex: 1 1 280px;
+  min-width: 250px;
+  max-width: 380px;
+  border-radius: 24px;
+  background: linear-gradient(100deg, #161b23 30%, #222a36 45%, #161b23 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+.empty,
+.error {
+  padding: 32px;
+  color: #b4bdcb;
+}
+.error h1,
+.error h2 {
+  color: #fff;
+}
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.error button,
+.dialog button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: #8b5cf6;
+  color: #fff;
+  cursor: pointer;
+}
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #0009;
+}
+.dialog {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid #424c5e;
+  border-radius: 18px;
+  background: #11151d;
+  color: #f2f4f8;
+}
+.dialog label {
+  display: grid;
+  gap: 6px;
+}
+.dialog input,
+.dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #394354;
+  border-radius: 8px;
+  background: #0b0d12;
+  color: #f2f4f8;
+  padding: 10px;
+  font: inherit;
+}
+.errorText {
+  color: #ff9c9c;
+}
+.headCopy a:focus-visible,
+.projectCard a:focus-visible,
+.error a:focus-visible,
+.error button:focus-visible,
+.dialog button:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 3px;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (max-width: 700px) {
+  .page {
+    padding: 24px 16px 50px;
+  }
+  .headCard {
+    display: block;
+  }
+  .headCard img {
+    width: 100%;
+    height: 190px;
+  }
+  .headCopy {
+    padding: 28px;
+  }
+  .projectCard {
+    max-width: none;
+  }
+  .sectionHeading {
+    align-items: start;
+    gap: 10px;
+    flex-direction: column;
+  }
+}
