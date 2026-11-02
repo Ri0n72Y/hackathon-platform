@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "dev": "vite",
-    "test:installation": "node --test tests/installation-probe.test.mjs"
+    "test:installation": "node --test tests/installation-probe.test.mjs tests/oauth-return.test.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.4",
