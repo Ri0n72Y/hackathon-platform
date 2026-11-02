@@ -242,7 +242,7 @@ GitHub 官方说明：private GitHub App 只能安装到 App 所属账户；publ
 npm run test:installation
 ```
 
-本地隔离副本使用 Node.js 22 执行：**11 个测试通过，0 个失败**。这验证了模拟响应下的分支判定与 JWT 签名逻辑；不是实时 GitHub API、OAuth 回调或 Vercel 部署验收。由于尚未检查完整项目的依赖与构建产物，**本轮未声称 `npm run build` 通过**。
+本地隔离副本使用 Node.js 22 执行：**12 个测试通过，0 个失败**。这验证了模拟响应下的分支判定与 JWT 签名逻辑；不是实时 GitHub API、OAuth 回调或 Vercel 部署验收。由于尚未检查完整项目的依赖与构建产物，**本轮未声称 `npm run build` 通过**。
 
 ### 真实实验的前提和操作（尚未执行）
 
