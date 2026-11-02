@@ -17,7 +17,8 @@ export default {
         headers: oauthHeaders() })
     }
 
-    const { state, challenge, cookie } = newFlow(config.key)
+    const returnPath = new URL(request.url).searchParams.get('return_to')
+    const { state, challenge, cookie } = newFlow(config.key, returnPath)
     const authorize = new URL('https://github.com/login/oauth/authorize')
     authorize.search = new URLSearchParams({
       client_id: config.clientId,
