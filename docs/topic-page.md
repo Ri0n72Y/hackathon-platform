@@ -17,4 +17,12 @@ whitelist: true
 
 ## Playground 验收
 
-启动 `npm run dev` 后访问 `/topic/<owner>/<repository>/`。TopicPage 在该路径独立装配，其他路径仍装配既有 Issues Playground。已执行 `npm run build`（TypeScript 检查与 Vite 构建通过）。真实 GitHub/Vercel Function 联调需要在部署环境中验证，本地构建不等同于联调成功。
+启动 `npm run dev` 后访问 `/topic/<owner>/<repository>/`。TopicPage 在该路径独立装配，其他路径仍装配既有 Issues Playground。已实际执行：
+
+- `npm install`：依赖安装成功。
+- `npx prettier --check ...`：本 PR 涉及的 TSX、MJS、CSS 文件全部通过。
+- `npm run build`：TypeScript 检查与 Vite 构建通过。
+- Vite Playground：合法 Topic 路由返回独立 Playground HTML；非法 pathname 仍由同一入口接管，页面组件显示路由错误。
+- YAML 解析：`topic: demo # comment` 与 `whitelist: false` 被解析为字符串和布尔值，注释不会污染配置值。
+
+Vite 本身不会执行 Vercel Functions，因此本地 Playground 已验证入口装配和页面路由，真实 GitHub Topic、README、白名单、限流和用户授权写入仍需在 Vercel 部署环境联调。错误页会保留请求阶段和 HTTP 状态；重试使用请求序号与 AbortController，旧请求不能覆盖新状态。
