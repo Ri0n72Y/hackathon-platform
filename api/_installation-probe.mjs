@@ -100,6 +100,7 @@ export async function inspectInstallation({ owner, repo, env = process.env, fetc
   const repository = metadata.data
   if (repository.private === true) return { state: 'repository_unavailable' }
   if (repository.private !== false || typeof repository.full_name !== 'string' ||
+      repository.full_name.toLowerCase() !== (owner + '/' + repo).toLowerCase() ||
       !Number.isSafeInteger(repository.id) ||
       repository.owner?.login?.toLowerCase() !== owner.toLowerCase() ||
       !['User', 'Organization'].includes(repository.owner?.type)) {
