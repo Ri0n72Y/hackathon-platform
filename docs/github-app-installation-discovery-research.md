@@ -231,7 +231,7 @@ GitHub 官方说明：private GitHub App 只能安装到 App 所属账户；publ
 | --- | --- |
 | `api/_installation-probe.mjs` | App JWT 签名、公开仓库信息读取、仓库级/账户级 Installation 查询、安全的 GitHub 安装/管理跳转 URL 校验。仅使用 GET，不创建 Installation Token，不修改权限。 |
 | `api/github-installation-probe.mjs` | 只读 Vercel Function。要求现有 OAuth 会话和预设来源，返回接入状态；响应禁用缓存，不将 Installation ID、App JWT 或用户令牌返回给浏览器。 |
-| `apps/playground/public/installation-probe.html` | Vite Playground 的独立实验页。用户先 OAuth 登录，输入 `owner/repo`，由 Function 检查状态；需要授权时打开 GitHub 的安装页/管理页，用户返回后重新查询。仓库名仅保存在当前标签页的 sessionStorage 用于手动恢复；不保存令牌。 |
+| `apps/playground/public/installation-probe.html` | Vite Playground 的独立实验页。用户先 OAuth 登录，输入 `owner/repo`，由 Function 检查状态；需要授权时打开 GitHub 的安装页/管理页，用户返回后重新查询；如果 GitHub App Setup URL 配置到此页面并携带 `setup_action`，页面会自动发起只读复查。仓库名仅保存在当前标签页的 sessionStorage 用于恢复；不保存令牌。 |
 | `tests/installation-probe.test.mjs` | Node 内置测试，Mock GitHub API 响应，覆盖已接入、选定仓库未授权、未安装、暂停、异常响应、错误链接和输入校验。 |
 
 ### 本地 Mock 检查
@@ -242,12 +242,14 @@ GitHub 官方说明：private GitHub App 只能安装到 App 所属账户；publ
 npm run test:installation
 ```
 
-本地隔离副本使用 Node.js 22 执行：**12 个测试通过，0 个失败**。这验证了模拟响应下的分支判定与 JWT 签名逻辑；不是实时 GitHub API、OAuth 回调或 Vercel 部署验收。由于尚未检查完整项目的依赖与构建产物，**本轮未声称 `npm run build` 通过**。
+该命令现同时包含 Installation 与 OAuth 返回路径测试；加入后者后尚未重新执行完整命令。
+
+已有 Installation Mock 检查在本地隔离副本使用 Node.js 22 执行：**12 个测试通过，0 个失败**。后续新增的 OAuth 返回路径测试尚未在本轮执行完整测试命令，不能将新测试计入已通过数量。这验证了模拟响应下的分支判定与 JWT 签名逻辑；不是实时 GitHub API、OAuth 回调或 Vercel 部署验收。由于尚未检查完整项目的依赖与构建产物，**本轮未声称 `npm run build` 通过**。
 
 ### 真实实验的前提和操作（尚未执行）
 
 1. 使用有权限的隔离 GitHub App 与公开测试仓库，配置已有 OAuth Function 所需的 `GITHUB_APP_CLIENT_ID`、`GITHUB_APP_CLIENT_SECRET`、`GITHUB_OAUTH_CALLBACK_URL`、`GITHUB_OAUTH_COOKIE_KEY`，及 App JWT 的 `GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`。可选 `GITHUB_APP_SLUG`；不设置时，Function 用 App JWT 调用 `GET /app` 取得 slug。**不再要求实验 Function 配置 `GITHUB_INSTALLATION_ID`**；其他旧的生产 Function 仍可能依赖它，不在本 PR 改造。
-2. 将 OAuth callback 配到实际测试域名，并验证现有 `state` / PKCE / Cookie 流程；不要假定任意 Vercel Preview URL 自动符合当前 OAuth 源校验。
+2. 将 OAuth callback 配到实际生产域名（或单独受控测试域名），并验证现有 `state` / PKCE / Cookie 流程；实验页发起的登录使用加密 OAuth Flow Cookie 保存允许的返回路径，成功后返回 `/installation-probe.html`。不要假定任意 Vercel Preview URL 自动符合当前 OAuth 源校验。
 3. 构建并部署当前 PR 的隔离测试版本，访问 `/installation-probe.html`，登录后输入公开 `owner/repo`。页面调用 `GET /api/github-installation-probe?owner=...&repo=...`。
 4. 验证状态：`connected`、`needs_installation`、`needs_repository_authorization`、`installation_suspended`、`repository_unavailable`；检查 GitHub 管理链接只指向 `https://github.com`。对未安装/未授权仓库，完成 GitHub 原生授权后返回并**主动重新检查**；不得仅依据 Setup URL 查询参数判定成功。
 5. 实测 GitHub 401/403/404、selected repositories、组织审批、撤销与限流等边界；记录 HTTP 状态与非秘密字段，不记录令牌和私钥。
@@ -258,7 +260,7 @@ npm run test:installation
 - **无持久 ID**：目标仓库的 Installation 由 App JWT + GitHub API 实时查询，不把固定 ID 或仓库→Installation ID 映射作为接入事实来源。
 - **权限分离**：会话存在只决定用户进入实验页的条件，平台接入仍由 App Installation 判定；本实验**不执行用户写入**，也不替代现有 Issue 写入路径的授权检查。
 - **公共仓库实验**：先通过无授权的公开 Repository API 检查仓库（存在 GitHub 匿名 API 速率限制），只有确认是公开仓库才继续 App JWT 查询。异常响应不会当作“未安装”。
-- **未实现自动回跳完成**：GitHub App Setup URL / Redirect on update 仍需管理员实际配置并验收；页面目前只提供回到实验页后的手动复查。
+- **自动回跳依赖 GitHub App 设置**：若设置 Setup URL 为生产域名的 `/installation-probe.html` 并启用适用的更新后回跳，页面收到 `setup_action` 后会触发服务端重新查询；回跳参数本身不作为接入证明。未配置或 GitHub 未回跳时，用户仍需手动返回实验页复查。GitHub App 设置尚未修改或验收。
 - **仍有生产代码缺口**：`api/_github.mjs`、`api/github-verify.mjs`、`api/_issue-interaction.mjs` 等旧路径仍用固定 Installation ID；本实验不直接替换，以免把 Mock 验证误认为生产安全验收。
 
 ## 官方资料
@@ -269,3 +271,12 @@ npm run test:installation
 - [List repositories accessible to the user access token](https://docs.github.com/en/rest/apps/installations#list-repositories-accessible-to-the-user-access-token)
 - [Create an installation access token for an app](https://docs.github.com/en/rest/apps/apps#create-an-installation-access-token-for-an-app)
 - [Making a GitHub App public or private](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/making-a-github-app-public-or-private)
+
+### 合并至 main 后的 Vercel 在线实验检查（2026-11-02）
+
+- Vite 配置使用仓库根目录的 `vite.config.ts`，`root: apps/playground`、`build.outDir: ../../dist`。因此 `apps/playground/public/installation-probe.html` 应由 Vite 复制到 `dist/installation-probe.html`。**尚未实际运行完整构建来验证产物**。
+- Vercel 项目须以仓库根目录为 Root Directory，Build Command 为 `npm run build`，Output Directory 为 `dist`；`api/github-installation-probe.mjs` 和共享 helper 位于仓库根目录 `api/`。如果 Vercel 项目设置不同，需调整设置或目录，不能仅凭仓库结构保证实际部署。
+- 需在目标部署环境配置 OAuth 所需的 `GITHUB_APP_CLIENT_ID`、`GITHUB_APP_CLIENT_SECRET`、`GITHUB_OAUTH_CALLBACK_URL`、`GITHUB_OAUTH_COOKIE_KEY` 与 App JWT 所需的 `GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`；可选 `GITHUB_APP_SLUG`。不要把真实凭据提交仓库。
+- 当前静态实验页可以通过 `/installation-probe.html` 直接进入。OAuth 会话成功后会返回同一页面。GitHub 安装或变更授权后可手动复查；若 App Setup URL 配置到该页面，`setup_action` 会触发只读复查。该设置目前没有执行。
+- **PR #26 以 PR #16 的分支为 base，不是 `main`**。若要通过合并 PR #26 到 `main` 测试，必须先处理 PR #16 的依赖，或显式重新整理 PR #26 到 `main` 的变更范围；这不等于已有合并批准。
+- 未能查看 Vercel 具体项目的配置，未在真实部署环境运行端到端实验。合并后“必然可用”尚不能确认。
