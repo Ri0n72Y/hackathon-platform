@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test:installation": "node --test tests/installation-probe.test.mjs"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "4.0.4",
