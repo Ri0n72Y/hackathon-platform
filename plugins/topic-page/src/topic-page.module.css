@@ -44,32 +44,11 @@
   line-height: 0.98;
   margin: 16px 0;
 }
-.headCopy p,
-.markdownBody {
+.description {
   max-width: 680px;
   color: #b4bdcb;
   line-height: 1.7;
-}
-.markdownBody h2,
-.markdownBody h3 {
-  color: #f2f4f8;
-  margin: 18px 0 8px;
-}
-.markdownBody ul,
-.markdownBody ol {
-  padding-left: 24px;
-}
-.markdownBody code {
-  font-family: ui-monospace, monospace;
-  background: #1c2430;
-  padding: 2px 5px;
-  border-radius: 5px;
-}
-.markdownBody pre {
-  overflow: auto;
-  background: #0a0d12;
-  padding: 14px;
-  border-radius: 10px;
+  white-space: pre-line;
 }
 .headCopy a,
 .projectCard a,
@@ -77,6 +56,15 @@
   color: #a78bfa;
   text-decoration: none;
   font-weight: 700;
+}
+.headMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 28px;
+  color: #8d9aaf;
+  font-size: 13px;
 }
 .sectionHeading {
   display: flex;

@@ -1,27 +1,34 @@
-import { useMemo, type FormEvent } from "react";
-import { marked, Renderer } from "marked";
+import { type FormEvent } from "react";
 import type { TopicPageError, TopicRepository, TopicSnapshot } from "./service";
 import styles from "./topic-page.module.css";
 
-function markdownToHtml(source: string) {
-  const renderer = new Renderer();
-  renderer.html = () => "";
-  return marked.parse(source, {
-    async: false,
-    gfm: true,
-    breaks: true,
-    renderer,
-  }) as string;
+function readmeFields(readme: string) {
+  const lines = readme.replace(/\r\n?/g, "\n").split("\n");
+  const titleIndex = lines.findIndex((line) => /^#\s+/.test(line));
+  const title =
+    titleIndex >= 0
+      ? lines[titleIndex].replace(/^#\s+/, "").trim()
+      : "Topic Page";
+  const metadata = new Map<string, string>();
+  const descriptionLines = lines.filter((line, index) => {
+    const match = line.match(/^\s*(email|datetime):\s*(.*?)\s*$/i);
+    if (match) {
+      metadata.set(match[1].toLowerCase(), match[2].trim());
+      return false;
+    }
+    return index !== titleIndex;
+  });
+  return {
+    title,
+    description: descriptionLines.join("\n").trim(),
+    email: metadata.get("email") || "",
+    datetime: metadata.get("datetime") || "",
+  };
 }
 
-/** @summary Render the README title, safe Markdown body and repository cover. */
+/** @summary Render README title, plain text description, optional metadata and repository cover. */
 export function TopicPageHead({ snapshot }: { snapshot: TopicSnapshot }) {
-  const title =
-    snapshot.readme.match(/^#\s+(.+)$/m)?.[1]?.trim() || "Topic Page";
-  const body =
-    snapshot.readme.replace(/^#\s+.+$/m, "").trim() ||
-    "从 GitHub Topic 聚合参与项目。";
-  const bodyHtml = useMemo(() => markdownToHtml(body), [body]);
+  const { title, description, email, datetime } = readmeFields(snapshot.readme);
   return (
     <section className={styles.headCard}>
       {snapshot.coverUrl && (
@@ -36,10 +43,13 @@ export function TopicPageHead({ snapshot }: { snapshot: TopicSnapshot }) {
       <div className={styles.headCopy}>
         <span className={styles.eyebrow}>TOPIC / {snapshot.config.topic}</span>
         <h1>{title}</h1>
-        <div
-          className={styles.markdownBody}
-          dangerouslySetInnerHTML={{ __html: bodyHtml }}
-        />
+        {description && <p className={styles.description}>{description}</p>}
+        {(email || datetime) && (
+          <footer className={styles.headMeta}>
+            {email && <span>邮箱：{email}</span>}
+            {datetime && <span>时间：{datetime}</span>}
+          </footer>
+        )}
         <a href={snapshot.repository.html_url} target="_blank" rel="noreferrer">
           查看官方仓库 ↗
         </a>
