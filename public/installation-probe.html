@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>LabourChain · Installation 实验</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 620px; margin: 8vh auto; padding: 0 24px; line-height: 1.6; }
+    label { display: block; margin: 16px 0 6px; }
+    input { width: 100%; box-sizing: border-box; padding: 9px; font: inherit; }
+    button, a.action { display: inline-block; margin-top: 16px; padding: 8px 14px; font: inherit; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f3f3f3; padding: 14px; }
+    .note { color: #555; font-size: .92em; }
+  </style>
+</head>
+<body>
+  <h1>GitHub App 接入实验</h1>
+  <p class="note">PR #26 的只读实验。请先 GitHub OAuth 登录。安装或扩大仓库授权由 GitHub 页面完成；此实验不会修改授权。</p>
+  <p id="session">正在检查 GitHub 登录状态……</p>
+  <p><a id="login" href="/api/github-login" hidden>使用 GitHub 登录</a></p>
+  <form id="form">
+    <label for="owner">仓库所有者（个人或组织）</label>
+    <input id="owner" name="owner" autocomplete="off" required maxlength="39" placeholder="owner">
+    <label for="repo">仓库名称</label>
+    <input id="repo" name="repo" autocomplete="off" required maxlength="100" placeholder="repository">
+    <button type="submit">检查 App 授权状态</button>
+  </form>
+  <pre id="result" aria-live="polite">尚未检查</pre>
+  <p><a id="github" class="action" hidden rel="noreferrer noopener" target="_self">前往 GitHub 授权管理</a></p>
+  <p class="note">从 GitHub 返回后，重新点击「检查 App 授权状态」。只有 Function 再次查询 GitHub 的结果才能确认接入。</p>
+  <script type="module">
+    const byId = id => document.getElementById(id)
+    const messages = {
+      connected: '仓库已经授权给 LabourChain App，可以进入项目。',
+      needs_installation: '仓库所属账户尚未安装本 App。请前往 GitHub 安装。',
+      needs_repository_authorization: '账户已经安装 App，但目标仓库尚未获准。请在 GitHub 调整授权范围。',
+      installation_suspended: '当前安装已暂停。需要管理员在 GitHub 处理。',
+      repository_unavailable: '公开仓库不存在或无法公开访问。',
+    }
+    const previously = sessionStorage.getItem('labourchain.installation-probe.repo')
+    if (previously) {
+      const parts = previously.split('/')
+      if (parts.length === 2) { byId('owner').value = parts[0]; byId('repo').value = parts[1] }
+    }
+    try {
+      const response = await fetch('/api/github-session', { credentials: 'same-origin', cache: 'no-store' })
+      const data = await response.json()
+      byId('session').textContent = data.authenticated ? '已登录 GitHub' : '尚未登录 GitHub'
+      byId('login').hidden = Boolean(data.authenticated)
+    } catch { byId('session').textContent = '无法确认登录状态' }
+    byId('form').addEventListener('submit', async event => {
+      event.preventDefault()
+      const owner = byId('owner').value.trim(), repo = byId('repo').value.trim()
+      sessionStorage.setItem('labourchain.installation-probe.repo', owner + '/' + repo)
+      byId('github').hidden = true
+      byId('github').removeAttribute('href')
+      byId('result').textContent = '检查中……'
+      try {
+        const query = new URLSearchParams({ owner, repo })
+        const response = await fetch('/api/github-installation-probe?' + query, {
+          credentials: 'same-origin', cache: 'no-store',
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          byId('result').textContent = data.error || '查询失败'
+          if (response.status === 401) byId('login').hidden = false
+          return
+        }
+        byId('result').textContent = (messages[data.state] || data.state) +
+          (data.repository ? '\n仓库：' + data.repository : '')
+        if (data.action_url) {
+          const url = new URL(data.action_url)
+          if (url.origin === 'https://github.com') {
+            byId('github').href = url.href
+            byId('github').hidden = false
+          }
+        }
+      } catch { byId('result').textContent = '网络错误，请稍后重试' }
+    })
+  </script>
+</body>
+</html>
