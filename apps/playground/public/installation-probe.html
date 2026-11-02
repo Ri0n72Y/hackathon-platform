@@ -78,6 +78,14 @@
         }
       } catch { byId('result').textContent = '网络错误，请稍后重试' }
     })
+    // GitHub Setup URL parameters only trigger a fresh read-only check; they are not proof of access.
+    const returned = new URL(location.href).searchParams.has('setup_action')
+    if (returned) {
+      history.replaceState(null, '', '/installation-probe.html')
+      if (previously && previously.split('/').length === 2) {
+        byId('form').requestSubmit()
+      }
+    }
   </script>
 </body>
 </html>
