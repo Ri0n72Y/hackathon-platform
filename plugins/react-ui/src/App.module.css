@@ -1,0 +1,9 @@
+.notFound {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 44px 22px;
+}
+
+.notFound a {
+  color: #195ca8;
+}
