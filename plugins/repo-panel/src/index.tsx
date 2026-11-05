@@ -47,6 +47,10 @@ export function RepoPanel({ service }: { service: RepoIssuesService }) {
   }
 
   useEffect(() => {
+    void service.refresh()
+  }, [service])
+
+  useEffect(() => {
     const controller = new AbortController()
     void fetch('/api/github-session', { signal: controller.signal })
       .then(async response => {
