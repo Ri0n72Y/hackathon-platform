@@ -7,11 +7,11 @@ import { IssueRequestError, type GithubComment, type GithubIssue,
 import styles from './IssueDetailPage.module.css'
 
 type Load = {
-  loading: boolean; issue: GithubIssue | null; comments: GithubComment[];
+  key: string; loading: boolean; issue: GithubIssue | null; comments: GithubComment[];
   page: number; hasMore: boolean; fetchingMore: boolean;
   error: { message: string; status: number } | null; pageError: string
 }
-const empty: Load = { loading: true, issue: null, comments: [], page: 0, hasMore: false,
+const empty: Load = { key: '', loading: true, issue: null, comments: [], page: 0, hasMore: false,
   fetchingMore: false, error: null, pageError: '' }
 type Auth = { status: 'checking' | 'anonymous' | 'authorized' | 'denied' | 'error'; message: string }
 
@@ -57,6 +57,7 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
   const valid = validIssueTarget(owner, repo, number)
   const numberValue = Number(number)
   const target = (owner || '') + '/' + (repo || '')
+  const routeKey = target + '/issues/' + (number || '')
 
   useEffect(() => {
     setTab('discussion')
@@ -67,11 +68,11 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
     const current = ++revision.current
     const abort = new AbortController()
     controller.current = abort
-    setState({ ...empty })
+    setState({ ...empty, key: routeKey })
     setWriteError('')
     setPending(false)
     if (!valid || !owner || !repo) {
-      setState({ ...empty, loading: false,
+      setState({ ...empty, key: routeKey, loading: false,
         error: { message: '无效的 Issue URL', status: 404 } })
       return () => { abort.abort(); revision.current++ }
     }
@@ -89,15 +90,15 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
         }
         const first = await service.getComments(owner, repo, numberValue, 1, abort.signal)
         if (current !== revision.current || abort.signal.aborted) return
-        setState({ loading: false, issue, comments: uniqueComments(first.items),
+        setState({ key: routeKey, loading: false, issue, comments: uniqueComments(first.items),
           page: 1, hasMore: first.hasMore, fetchingMore: false, error: null, pageError: '' })
       } catch (error) {
         if (current !== revision.current || abort.signal.aborted) return
-        setState({ ...empty, loading: false, error: asIssueError(error) })
+        setState({ ...empty, key: routeKey, loading: false, error: asIssueError(error) })
       }
     })()
     return () => { abort.abort(); revision.current++ }
-  }, [service, owner, repo, number, valid, numberValue, reload])
+  }, [service, owner, repo, number, valid, numberValue, routeKey, reload])
 
   useEffect(() => {
     const abort = new AbortController()
@@ -191,15 +192,15 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
       <Link to="/">Playground</Link>
       <Link to={'/' + target}>返回仓库页</Link>
     </nav>
-    {state.loading && <p role="status">正在读取 GitHub Issue、配置与评论…</p>}
-    {state.error && <section className={styles.panel}>
+    {(state.key !== routeKey || state.loading) && <p role="status">正在读取 GitHub Issue、配置与评论…</p>}
+    {state.key === routeKey && state.error && <section className={styles.panel}>
       <h1>{state.error.status === 404 ? '404 · Issue 不存在' : 'Issue 无法加载'}</h1>
       <p role="alert">{state.error.message}（HTTP {state.error.status}）</p>
       <button className={styles.action} type="button" onClick={() => setReload(i => i + 1)}>
         重试读取
       </button>
     </section>}
-    {state.issue && <>
+    {state.key === routeKey && state.issue && <>
       <header className={styles.panel}>
         <p className={styles.meta}>{target} · #{state.issue.number} · {state.issue.state === 'open' ? 'Open' : 'Closed'}</p>
         <h1>{state.issue.title}</h1>
