@@ -80,7 +80,7 @@ function scalar(value) {
     try { return JSON.parse(source) } catch { return null }
   }
   if (source.startsWith("'") && source.endsWith("'")) return source.slice(1, -1).replace(/''/g, "'")
-  if (!source || /[\[\]{}#]/.test(source)) return null
+  if (!source || source === '[]' || source === '{}' || source === '~') return null
   return source
 }
 const SHA = /^[a-f\d]{40}$/i

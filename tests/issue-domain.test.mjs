@@ -77,3 +77,18 @@ test('URL, exact channel namespace and Open/Closed validation excludes PRs', () 
   assert.equal(validIssueForPage({ ...issue, labels: [{ name: 'channel:unknown' }] },
     ['channel:discussion']), false)
 })
+
+test('real §9.4 no-suffix examples preserve multiline Markdown and inline outcome links', () => {
+  const issue2 = '```yaml\nlabour:\n  work: |\n    确定仓库首页、Kanban 专注页及路由交互方案\n    沉淀 UI/UX 设计基线文档\n  hr: ~3\n  outcome: |\n    [UI/UX 设计基线](https://github.com/Ri0n72Y/hackathon-platform/blob/main/docs/LabourChain-Repo-Board-Issue-UX-Baseline.md)\n```'
+  const issue5 = '```yaml\nlabour:\n  work: 完成环境变量配置与vercel部署，实现最小代码\n  hr: ~1\n  outcome: [测试网站](https://hackathon-platform-sigma-drab.vercel.app/)\n```'
+  const issue20 = '```yaml\nlabour:\n  work: |\n    明确使用者向社区合作者转化的参与路径\n    建立独立的社区体验 Discovery 议题\n  hr: ~0.5\n  outcome: |\n    [社区体验 Discovery](https://github.com/Ri0n72Y/hackathon-platform/issues/20)\n```'
+  assert.equal(parseLabourComment(issue2)?.hours, 3)
+  assert.equal(parseLabourComment(issue5)?.outcome,
+    '[测试网站](https://hackathon-platform-sigma-drab.vercel.app/)')
+  assert.equal(parseLabourComment(issue20)?.hours, 0.5)
+  const result = summarizeIssueComments([comment(2, issue2), comment(5, issue5),
+    comment(20, issue20)], true)
+  assert.equal(result.hours, 4.5)
+  assert.equal(result.complete, true)
+  assert.equal(result.records.length, 3)
+})
