@@ -12,7 +12,7 @@ const viewPath = resolve(root, 'plugins/issue-detail/src/IssueDetailView.tsx')
 const controllerPath = resolve(root, 'plugins/issue-detail/src/IssueDetailPage.tsx')
 const viewSource = readFileSync(viewPath, 'utf8')
 const controllerSource = readFileSync(controllerPath, 'utf8')
-let server, View
+let server, View, issueTabForKey
 const actions = {
   onRetry() {}, onRefresh() {}, onLoadMore() {},
   onCommentChange() {}, onLabourChange() {}, onSubmitComment() {}, onSubmitLabour() {},
@@ -72,6 +72,7 @@ before(async () => {
   })
   const loaded = await server.ssrLoadModule('/plugins/issue-detail/src/IssueDetailView.tsx')
   View = loaded.default
+  issueTabForKey = loaded.issueTabForKey
 })
 after(async () => { await server?.close() })
 
@@ -130,4 +131,29 @@ test('pure View renders authorized write controls and contextual failure status'
   assert.match(html, /role="alert"/)
   assert.doesNotMatch(html, /匿名用户只能阅读/)
   assert.doesNotMatch(html, /disabled=""/)
+})
+
+
+test('tab keyboard intent maps Left/Right/Home/End and ignores other keys', () => {
+  assert.equal(issueTabForKey('discussion', 'ArrowRight'), 'labour')
+  assert.equal(issueTabForKey('labour', 'ArrowLeft'), 'discussion')
+  assert.equal(issueTabForKey('labour', 'ArrowRight'), 'discussion')
+  assert.equal(issueTabForKey('discussion', 'ArrowLeft'), 'labour')
+  assert.equal(issueTabForKey('labour', 'Home'), 'discussion')
+  assert.equal(issueTabForKey('discussion', 'End'), 'labour')
+  assert.equal(issueTabForKey('discussion', 'Tab'), null)
+  assert.equal(issueTabForKey('labour', 'Enter'), null)
+})
+
+test('tab ARIA controls and labelledby IDs resolve to the correct mounted panels', () => {
+  const html = renderToStaticMarkup(createElement(View, { model, actions }))
+  for (const tab of ['discussion', 'labour']) {
+    const tabMatch = html.match(new RegExp('id="([^"]+-tab-' + tab +
+      ')" role="tab"[^>]*aria-controls="([^"]+)"[^>]*aria-selected="(true|false)"[^>]*tabindex="(-?[0-9]+)"'))
+    assert.ok(tabMatch, 'expected ' + tab + ' tab metadata')
+    assert.ok(tabMatch[2].endsWith('-panel-' + tab))
+    assert.ok(html.includes('role="tabpanel" id="' + tabMatch[2] +
+      '" aria-labelledby="' + tabMatch[1] + '"'))
+    assert.equal(tabMatch[4], tab === 'discussion' ? '0' : '-1')
+  }
 })

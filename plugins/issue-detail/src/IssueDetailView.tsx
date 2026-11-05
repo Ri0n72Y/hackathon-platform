@@ -5,6 +5,16 @@ import styles from './IssueDetailView.module.css'
 
 type Props = { model: IssueDetailViewModel; actions: IssueDetailViewActions }
 
+/** @summary Resolve keyboard navigation inside the two-tab Issue view. */
+export function issueTabForKey(current: IssueTab, key: string): IssueTab | null {
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+    return current === 'discussion' ? 'labour' : 'discussion'
+  }
+  if (key === 'Home') return 'discussion'
+  if (key === 'End') return 'labour'
+  return null
+}
+
 function PermissionHint({ permission }: { permission: PermissionView }) {
   if (permission.allowed) return <p className={styles.permission}>已通过 OAuth 与仓库范围检查；最终写入以 GitHub 返回结果为准。</p>
   return <p className={styles.permission} role={permission.state === 'error' ? 'alert' : 'status'}>
@@ -134,12 +144,8 @@ export default function IssueDetailView({ model, actions }: Props) {
   const panelId = (name: IssueTab) => baseId + '-panel-' + name
 
   function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    let next: IssueTab
-    if (event.key === 'ArrowRight') next = tab === 'discussion' ? 'labour' : 'discussion'
-    else if (event.key === 'ArrowLeft') next = tab === 'discussion' ? 'labour' : 'discussion'
-    else if (event.key === 'Home') next = 'discussion'
-    else if (event.key === 'End') next = 'labour'
-    else return
+    const next = issueTabForKey(tab, event.key)
+    if (!next) return
     event.preventDefault()
     setTab(next)
     ;(next === 'discussion' ? discussionTab : labourTab).current?.focus()
