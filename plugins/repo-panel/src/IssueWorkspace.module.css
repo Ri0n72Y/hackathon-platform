@@ -1,0 +1,7 @@
+.workspace { margin-top: 1.4rem; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.list { padding-left: 1.4rem; display: grid; gap: .7rem; }
+.list li { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+.form { display: grid; gap: .7rem; padding: 1rem; border: 1px solid #ddd; }
+.form label { display: grid; gap: .3rem; }
+.form input, .form textarea { padding: .5rem; }

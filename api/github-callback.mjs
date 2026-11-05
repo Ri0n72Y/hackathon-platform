@@ -1,5 +1,5 @@
 import { FLOW_COOKIE, cookieHeader, oauthConfig, oauthHeaders,
-  readFlow, sessionCookie, validOrigin } from './_oauth.mjs'
+  readFlow, sessionCookie, validOrigin, validLoginReturnPath } from './_oauth.mjs'
 
 function fail(status, message, headers) {
   headers.append('Set-Cookie', cookieHeader(FLOW_COOKIE, '', 0))
@@ -50,7 +50,7 @@ export default {
 
       headers.append('Set-Cookie', sessionCookie(result.access_token, result.expires_in, config.key))
       headers.append('Set-Cookie', cookieHeader(FLOW_COOKIE, '', 0))
-      headers.set('Location', config.origin + '/')
+      headers.set('Location', config.origin + validLoginReturnPath(flow.returnPath))
       return new Response(null, { status: 303, headers })
     } catch {
       return fail(502, 'GitHub login failed', headers)

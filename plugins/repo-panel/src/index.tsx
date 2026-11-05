@@ -47,6 +47,10 @@ export function RepoPanel({ service }: { service: RepoIssuesService }) {
   }
 
   useEffect(() => {
+    void service.refresh()
+  }, [service])
+
+  useEffect(() => {
     const controller = new AbortController()
     void fetch('/api/github-session', { signal: controller.signal })
       .then(async response => {
@@ -116,6 +120,8 @@ export const repoPanel = {
     function RepoPanelEntry() {
       return <RepoPanel service={service} />
     }
-    ctx.effect(() => ctx.reactUI.register('repo-panel', RepoPanelEntry))
+    ctx.effect(() => ctx.reactUI.registerPage({
+      id: 'repo-panel', path: '/', Component: RepoPanelEntry,
+    }))
   },
 }

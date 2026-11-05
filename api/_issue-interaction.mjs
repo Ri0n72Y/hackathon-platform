@@ -1,4 +1,5 @@
 import { oauthConfig, readSession, oauthHeaders } from './_oauth.mjs'
+import { resolveInstalledRepository, ProbeError } from './_installation-probe.mjs'
 
 export function json(body, status = 200) {
   return Response.json(body, { status, headers: oauthHeaders() })
@@ -46,7 +47,7 @@ export function repoPath(owner, repo) {
 /** User-to-server writes: require an explicit same-origin JSON request and installation membership. */
 const MAX_WRITE_BYTES = 128 * 1024
 
-export async function writeContext(request) {
+export async function writeContext(request, { dynamicInstallation = false } = {}) {
   if (request.method !== 'POST') return { error: json({ error: 'Method not allowed' }, 405) }
   let config
   try { config = oauthConfig() } catch { return { error: json({ error: 'GitHub 登录尚未配置' }, 503) } }
@@ -75,7 +76,16 @@ export async function writeContext(request) {
 
   const session = readSession(request)
   if (!session) return { error: json({ error: '请先登录 GitHub', relogin: true }, 401) }
-  const installation = process.env.GITHUB_INSTALLATION_ID
+  let installation = process.env.GITHUB_INSTALLATION_ID
+  if (dynamicInstallation) {
+    try {
+      const resolved = await resolveInstalledRepository({ owner: body.owner, repo: body.repo })
+      installation = String(resolved.installationId)
+    } catch (error) {
+      if (error instanceof ProbeError) return { error: json({ error: error.message }, error.status) }
+      return { error: json({ error: 'Installation verification unavailable' }, 502) }
+    }
+  }
   if (!/^\d+$/.test(installation || '')) return { error: json({ error: 'App 安装配置不可用' }, 503) }
 
   const expected = (body.owner + '/' + body.repo).toLowerCase()

@@ -78,11 +78,20 @@ export function validOrigin(request, origin) {
   return new URL(request.url).origin === origin
 }
 
-export function newFlow(key) {
+export function validLoginReturnPath(path) {
+  if (path === '/installation-probe.html') return path
+  if (typeof path === 'string' &&
+      /^\/[a-z\d-]{1,39}\/[a-z\d._-]{1,100}\/issues\/[1-9]\d*$/i.test(path) &&
+      Number.isSafeInteger(Number(path.split('/').at(-1)))) return path
+  return '/'
+}
+
+export function newFlow(key, returnPath = '/') {
   const state = randomBytes(32).toString('base64url')
   const verifier = randomBytes(32).toString('base64url')
   const challenge = createHash('sha256').update(verifier).digest('base64url')
-  const cookie = seal({ state, verifier, exp: Date.now() + FLOW_TTL_SECONDS * 1000 },
+  const cookie = seal({ state, verifier, returnPath: validLoginReturnPath(returnPath),
+    exp: Date.now() + FLOW_TTL_SECONDS * 1000 },
     'oauth', key)
   return { state, challenge, cookie }
 }
