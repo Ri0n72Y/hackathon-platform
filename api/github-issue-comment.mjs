@@ -3,7 +3,7 @@ import { json, github, githubError, repoPath, validNumber, writeContext } from '
 /** Comment as the signed-in user, restricted to Issues (not PRs). */
 export default {
   async fetch(request) {
-    const context = await writeContext(request)
+    const context = await writeContext(request, { dynamicInstallation: true })
     if (context.error) return context.error
     const { body, token } = context
     if (!validNumber(body.number) || typeof body.body !== 'string' ||

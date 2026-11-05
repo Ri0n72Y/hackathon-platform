@@ -1,3 +1,5 @@
+import './issue-api.test.mjs'
+import './issue-domain.test.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, verify } from 'node:crypto'

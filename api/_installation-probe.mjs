@@ -141,3 +141,35 @@ export async function inspectInstallation({ owner, repo, env = process.env, fetc
   if (!actionUrl) throw new ProbeError('GitHub App install URL unavailable', 503)
   return { ...prefix, state: 'needs_installation', action_url: actionUrl }
 }
+
+
+/** @summary Resolve a public repository's current App installation without exposing its ID to callers. */
+export async function resolveInstalledRepository({ owner, repo, env = process.env, fetcher = fetch }) {
+  if (!validRepository(owner, repo)) throw new ProbeError('Invalid repository', 400)
+  const path = '/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)
+  const rateAwareQuery = async (target, options) => {
+    try { return await query(target, options) }
+    catch (error) {
+      if (error instanceof ProbeError && error.message === 'GitHub API rate limit reached') {
+        throw new ProbeError(error.message, 429)
+      }
+      throw error
+    }
+  }
+  const metadata = await rateAwareQuery(path, { fetcher })
+  if (metadata.status === 404) throw new ProbeError('Public repository not found', 404)
+  const target = metadata.data
+  if (target?.private !== false || !Number.isSafeInteger(target.id) ||
+      target.owner?.login?.toLowerCase() !== owner.toLowerCase() ||
+      target.full_name?.toLowerCase() !== (owner + '/' + repo).toLowerCase() ||
+      !['User', 'Organization'].includes(target.owner?.type)) {
+    if (target?.private === true) throw new ProbeError('Public repository not found', 404)
+    throw new ProbeError('Invalid public repository metadata', 502)
+  }
+  const jwt = appJwt(env)
+  const result = await rateAwareQuery(path + '/installation', { token: jwt, fetcher })
+  if (result.status === 404) throw new ProbeError('Repository is not authorized for this App', 403)
+  const installation = checkedInstallation(result.data, target.owner.login)
+  if (installation.suspended_at) throw new ProbeError('Repository App installation is suspended', 403)
+  return { installationId: installation.id, repositoryId: target.id, jwt }
+}

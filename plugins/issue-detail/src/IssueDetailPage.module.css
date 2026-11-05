@@ -1,0 +1,18 @@
+.page { max-width: 920px; margin: 0 auto; padding: 2rem 1.2rem 5rem; color: #172033; }
+.top { display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.panel { background: #fff; border: 1px solid #dce2e8; border-radius: 10px; padding: 1.2rem; margin-top: 1.2rem; }
+.meta { color: #536173; font-size: .9rem; }
+.body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+.list { display: grid; gap: 1rem; list-style: none; padding: 0; }
+.tabs { display: flex; gap: .5rem; border-bottom: 1px solid #dce2e8; padding-bottom: .5rem; margin-top: 2rem; }
+.tabs button[aria-selected="true"] { font-weight: 700; border-color: #4168ba; }
+.form { display: grid; gap: .8rem; margin-top: 1.3rem; }
+.form label { display: grid; gap: .3rem; }
+.form textarea, .form input { max-width: 100%; box-sizing: border-box; padding: .6rem; }
+.form button, .tabs button, .action { padding: .55rem .8rem; cursor: pointer; }
+.form button:disabled, .action:disabled { cursor: not-allowed; opacity: .6; }
+.warning { color: #8a3f13; }
+.error { color: #9b2025; }
+.success { color: #16704c; }
+.record { border-left: 3px solid #4168ba; padding-left: 1rem; }
+.commit { overflow-wrap: anywhere; font-family: monospace; font-size: .85rem; }
