@@ -38,6 +38,21 @@ export function appJwt(env = process.env, timestamp = Date.now()) {
   }
 }
 
+/** @summary Distinguish GitHub primary/secondary API throttling from permission errors. */
+export async function isGitHubRateLimited(response) {
+  if (response.status === 429) return true
+  if (response.status !== 403) return false
+  if (response.headers.get('x-ratelimit-remaining') === '0' ||
+      response.headers.has('retry-after')) return true
+  try {
+    const body = await response.clone().json()
+    return typeof body?.message === 'string' &&
+      /secondary rate limit|rate limit exceeded|abuse detection mechanism/i.test(body.message)
+  } catch {
+    return false
+  }
+}
+
 async function query(path, { token, fetcher }) {
   let response
   try {
@@ -57,10 +72,11 @@ async function query(path, { token, fetcher }) {
   if (response.status === 301 || response.status === 302 || response.status === 307 || response.status === 308) {
     throw new ProbeError('Repository path has changed; use its current GitHub URL', 409)
   }
-  if (response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0') {
-    throw new ProbeError('GitHub API rate limit reached', 503)
+  if (await isGitHubRateLimited(response)) {
+    throw new ProbeError('GitHub API rate limit reached', 429)
   }
-  if (response.status === 429 || response.status >= 500) {
+  if (response.status === 403) throw new ProbeError('GitHub verification denied', 403)
+  if (response.status >= 500) {
     throw new ProbeError('GitHub verification is temporarily unavailable', 503)
   }
   throw new ProbeError('GitHub verification failed', 502)
@@ -147,16 +163,7 @@ export async function inspectInstallation({ owner, repo, env = process.env, fetc
 export async function resolveInstalledRepository({ owner, repo, env = process.env, fetcher = fetch }) {
   if (!validRepository(owner, repo)) throw new ProbeError('Invalid repository', 400)
   const path = '/repos/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)
-  const rateAwareQuery = async (target, options) => {
-    try { return await query(target, options) }
-    catch (error) {
-      if (error instanceof ProbeError && error.message === 'GitHub API rate limit reached') {
-        throw new ProbeError(error.message, 429)
-      }
-      throw error
-    }
-  }
-  const metadata = await rateAwareQuery(path, { fetcher })
+  const metadata = await query(path, { fetcher })
   if (metadata.status === 404) throw new ProbeError('Public repository not found', 404)
   const target = metadata.data
   if (target?.private !== false || !Number.isSafeInteger(target.id) ||
@@ -167,7 +174,7 @@ export async function resolveInstalledRepository({ owner, repo, env = process.en
     throw new ProbeError('Invalid public repository metadata', 502)
   }
   const jwt = appJwt(env)
-  const result = await rateAwareQuery(path + '/installation', { token: jwt, fetcher })
+  const result = await query(path + '/installation', { token: jwt, fetcher })
   if (result.status === 404) throw new ProbeError('Repository is not authorized for this App', 403)
   const installation = checkedInstallation(result.data, target.owner.login)
   if (installation.suspended_at) throw new ProbeError('Repository App installation is suspended', 403)

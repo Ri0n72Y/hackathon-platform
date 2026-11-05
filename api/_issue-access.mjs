@@ -1,4 +1,4 @@
-import { ProbeError, resolveInstalledRepository, validRepository } from './_installation-probe.mjs'
+import { ProbeError, resolveInstalledRepository, validRepository, isGitHubRateLimited } from './_installation-probe.mjs'
 
 const GH = 'https://api.github.com'
 const HEADERS = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
@@ -11,8 +11,8 @@ export class IssueAccessError extends Error {
   }
 }
 
-function upstreamStatus(response) {
-  if (response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0') return 429
+async function upstreamStatus(response) {
+  if (await isGitHubRateLimited(response)) return 429
   if ([400, 401, 403, 404, 409, 410, 422, 429].includes(response.status)) return response.status
   return response.status >= 500 ? 503 : 502
 }
@@ -55,7 +55,7 @@ export async function issueReadAccess({ owner, repo, env = process.env, fetcher 
         permissions: { issues: 'read', contents: 'read', metadata: 'read' } }),
     })
   if (response.status !== 201) {
-    const status = upstreamStatus(response)
+    const status = await upstreamStatus(response)
     throw new IssueAccessError(upstreamMessage(status), status)
   }
   let result
@@ -73,7 +73,7 @@ export async function issueGitHubGet(access, path) {
     headers: { ...HEADERS, Authorization: 'Bearer ' + access.token },
   })
   if (!response.ok) {
-    const status = upstreamStatus(response)
+    const status = await upstreamStatus(response)
     throw new IssueAccessError(upstreamMessage(status), status)
   }
   let data

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, randomBytes } from 'node:crypto'
-import { resolveInstalledRepository } from '../api/_installation-probe.mjs'
+import { resolveInstalledRepository, inspectInstallation } from '../api/_installation-probe.mjs'
 import { issueReadAccess, issueGitHubGet } from '../api/_issue-access.mjs'
 import issueDetail from '../api/issue-detail.mjs'
 import issueComments from '../api/issue-comments.mjs'
@@ -175,5 +175,99 @@ test('OAuth comment write checks same origin, session and dynamic membership; us
       if (previous[k] === undefined) delete process.env[k]
       else process.env[k] = previous[k]
     }
+  }
+})
+
+
+test('B1: primary and secondary GitHub rate limits are 429; actual permission 403 remains 403', async () => {
+  const cases = [
+    ['primary 403', result(403, { message: 'API rate limit exceeded' },
+      { 'x-ratelimit-remaining': '0' }), 429],
+    ['secondary 403 with Retry-After and remaining quota', result(403,
+      { message: 'You have exceeded a secondary rate limit.' },
+      { 'retry-after': '60', 'x-ratelimit-remaining': '100' }), 429],
+    ['secondary 403 with only a GitHub error message', result(403,
+      { message: 'You have exceeded a secondary rate limit. Please wait.' },
+      { 'x-ratelimit-remaining': '100' }), 429],
+    ['secondary 403 with abuse detection message', result(403,
+      { message: 'You have triggered an abuse detection mechanism.' }), 429],
+    ['explicit GitHub 429', result(429, { message: 'Too many requests' }), 429],
+    ['true permission 403', result(403,
+      { message: 'Resource not accessible by integration' },
+      { 'x-ratelimit-remaining': '100' }), 403],
+  ]
+  for (const [label, failure, expected] of cases) {
+    const source = fakeGitHub()
+    const fetcher = (url, init) =>
+      new URL(url).pathname === '/repos/sample/repo/issues/1' ?
+        Promise.resolve(failure.clone()) : source.fetcher(url, init)
+    await assert.rejects(
+      issueGitHubGet({ fetcher, token: 'installation-read-token' },
+        '/repos/sample/repo/issues/1'),
+      error => error.status === expected &&
+        (expected === 429 ? /rate limit/i.test(error.message) : /permission/i.test(error.message)),
+      label,
+    )
+  }
+})
+
+test('B1: token creation reports secondary throttling instead of permission denial', async () => {
+  for (const [failure, expected] of [
+    [result(403, { message: 'You have exceeded a secondary rate limit.' },
+      { 'x-ratelimit-remaining': '100' }), 429],
+    [result(403, { message: 'Not authorized' }, { 'retry-after': '60' }), 429],
+    [result(403, { message: 'Resource not accessible by integration' }), 403],
+  ]) {
+    const source = fakeGitHub()
+    const fetcher = (url, init) =>
+      new URL(url).pathname === '/app/installations/77/access_tokens' ?
+        Promise.resolve(failure.clone()) : source.fetcher(url, init)
+    await assert.rejects(
+      issueReadAccess({ owner: 'sample', repo: 'repo', env, fetcher }),
+      error => error.status === expected,
+    )
+  }
+})
+
+test('B1: repository metadata and dynamic Installation checks distinguish throttling from forbidden', async () => {
+  for (const path of ['/repos/sample/repo', '/repos/sample/repo/installation']) {
+    for (const [label, failure, expected] of [
+      ['secondary header', result(403, { message: 'Forbidden' },
+        { 'retry-after': '60', 'x-ratelimit-remaining': '100' }), 429],
+      ['secondary message', result(403, { message: 'You have exceeded a secondary rate limit.' },
+        { 'x-ratelimit-remaining': '100' }), 429],
+      ['primary', result(403, { message: 'API rate limit exceeded' },
+        { 'x-ratelimit-remaining': '0' }), 429],
+      ['permission', result(403, { message: 'Resource not accessible by integration' },
+        { 'x-ratelimit-remaining': '100' }), 403],
+    ]) {
+      const source = fakeGitHub()
+      const fetcher = (url, init) => new URL(url).pathname === path ?
+        Promise.resolve(failure.clone()) : source.fetcher(url, init)
+      await assert.rejects(resolveInstalledRepository({
+        owner: 'sample', repo: 'repo', env, fetcher,
+      }), error => error.status === expected, path + ': ' + label)
+    }
+  }
+})
+
+
+test('B1: shared installation probe also distinguishes secondary 403 from permission 403', async () => {
+  for (const [failure, expected] of [
+    [result(403, { message: 'You have exceeded a secondary rate limit.' },
+      { 'x-ratelimit-remaining': '100' }), 429],
+    [result(403, { message: 'Forbidden' },
+      { 'retry-after': '60', 'x-ratelimit-remaining': '100' }), 429],
+    [result(403, { message: 'Resource not accessible by integration' },
+      { 'x-ratelimit-remaining': '100' }), 403],
+  ]) {
+    const source = fakeGitHub()
+    const fetcher = (url, init) =>
+      new URL(url).pathname === '/repos/sample/repo/installation' ?
+        Promise.resolve(failure.clone()) : source.fetcher(url, init)
+    await assert.rejects(
+      inspectInstallation({ owner: 'sample', repo: 'repo', env, fetcher }),
+      error => error.status === expected,
+    )
   }
 })
