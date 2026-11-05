@@ -116,6 +116,8 @@ export const repoPanel = {
     function RepoPanelEntry() {
       return <RepoPanel service={service} />
     }
-    ctx.effect(() => ctx.reactUI.register('repo-panel', RepoPanelEntry))
+    ctx.effect(() => ctx.reactUI.registerPage({
+      id: 'repo-panel', path: '/', Component: RepoPanelEntry,
+    }))
   },
 }
