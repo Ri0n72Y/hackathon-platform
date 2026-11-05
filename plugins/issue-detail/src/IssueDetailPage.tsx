@@ -1,21 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, useLocation, useParams } from 'react-router'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useParams } from 'react-router'
 import { formatLabourComment, parseIssueLabels, summarizeIssueComments,
   validIssueForPage, validIssueTarget } from './domain.mjs'
 import { IssueRequestError, type GithubComment, type GithubIssue,
   type IssueDetailApi } from './service'
-import styles from './IssueDetailPage.module.css'
+import IssueDetailView from './IssueDetailView'
+import type { FormNotice, IssueDetailViewActions, IssueDetailViewModel,
+  LabourDraft, LabourField, PermissionView } from './view-model'
 
 type Load = {
   key: string; loading: boolean; issue: GithubIssue | null; comments: GithubComment[];
   page: number; hasMore: boolean; fetchingMore: boolean;
-  error: { message: string; status: number } | null; pageError: string
+  lastRead: string; error: { message: string; status: number } | null; pageError: string
 }
 const empty: Load = { key: '', loading: true, issue: null, comments: [], page: 0, hasMore: false,
-  fetchingMore: false, error: null, pageError: '' }
-type Auth = { status: 'checking' | 'anonymous' | 'authorized' | 'denied' | 'error'; message: string }
+  fetchingMore: false, lastRead: '', error: null, pageError: '' }
+type Auth = {
+  key: string; status: 'checking' | 'anonymous' | 'authorized' | 'denied' | 'error'; message: string
+}
+const initialLabour: LabourDraft = { work: '', hours: '0.5', outcome: '',
+  commits: '', start: '', end: '' }
 
-function safeGitHubUrl(value: unknown) {
+function safeGitHubUrl(value: unknown): string | null {
   if (typeof value !== 'string') return null
   try {
     const url = new URL(value)
@@ -34,24 +40,17 @@ function uniqueComments(items: GithubComment[]) {
     (!seen.has(item.id) && Boolean(seen.add(item.id))))
 }
 
-/** @summary Load and validate the URL-selected Issue, preserving pagination and OAuth permissions. */
+/** @summary Orchestrate URL-bound Issue requests, OAuth checks and writes; prepare data for the pure View. */
 export default function IssueDetailPage({ service }: { service: IssueDetailApi }) {
   const { owner, repo, number } = useParams<'owner' | 'repo' | 'number'>()
   const location = useLocation()
   const [state, setState] = useState<Load>(empty)
-  const [auth, setAuth] = useState<Auth>({ status: 'checking', message: '' })
-  const [tab, setTab] = useState<'discussion' | 'labour'>('discussion')
+  const [auth, setAuth] = useState<Auth>({ key: '', status: 'checking', message: '' })
   const [reload, setReload] = useState(0)
   const [draft, setDraft] = useState('')
-  const [work, setWork] = useState('')
-  const [hours, setHours] = useState('0.5')
-  const [outcome, setOutcome] = useState('')
-  const [commits, setCommits] = useState('')
-  const [start, setStart] = useState('')
-  const [end, setEnd] = useState('')
-  const [pending, setPending] = useState(false)
-  const [notice, setNotice] = useState('')
-  const [writeError, setWriteError] = useState('')
+  const [labour, setLabour] = useState<LabourDraft>(initialLabour)
+  const [pendingKind, setPendingKind] = useState<'comment' | 'labour' | null>(null)
+  const [notice, setNotice] = useState<FormNotice | null>(null)
   const revision = useRef(0)
   const controller = useRef<AbortController | null>(null)
   const valid = validIssueTarget(owner, repo, number)
@@ -60,17 +59,15 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
   const routeKey = target + '/issues/' + (number || '')
 
   useEffect(() => {
-    setTab('discussion')
-    setNotice('')
-  }, [owner, repo, number])
+    setNotice(null)
+  }, [routeKey])
 
   useEffect(() => {
     const current = ++revision.current
     const abort = new AbortController()
     controller.current = abort
     setState({ ...empty, key: routeKey })
-    setWriteError('')
-    setPending(false)
+    setPendingKind(null)
     if (!valid || !owner || !repo) {
       setState({ ...empty, key: routeKey, loading: false,
         error: { message: '无效的 Issue URL', status: 404 } })
@@ -91,7 +88,8 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
         const first = await service.getComments(owner, repo, numberValue, 1, abort.signal)
         if (current !== revision.current || abort.signal.aborted) return
         setState({ key: routeKey, loading: false, issue, comments: uniqueComments(first.items),
-          page: 1, hasMore: first.hasMore, fetchingMore: false, error: null, pageError: '' })
+          page: 1, hasMore: first.hasMore, fetchingMore: false,
+          lastRead: new Date().toISOString(), error: null, pageError: '' })
       } catch (error) {
         if (current !== revision.current || abort.signal.aborted) return
         setState({ ...empty, key: routeKey, loading: false, error: asIssueError(error) })
@@ -102,34 +100,54 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
 
   useEffect(() => {
     const abort = new AbortController()
-    setAuth({ status: 'checking', message: '' })
+    setAuth({ key: routeKey, status: 'checking', message: '' })
     if (!valid || !owner || !repo) return () => abort.abort()
     void (async () => {
       try {
         if (!await service.getSession(abort.signal)) {
-          if (!abort.signal.aborted) setAuth({ status: 'anonymous', message: '' })
+          if (!abort.signal.aborted) setAuth({ key: routeKey, status: 'anonymous', message: '' })
           return
         }
         const verified = await service.verify(owner, repo, abort.signal)
         if (!abort.signal.aborted) setAuth(verified.repository.accessible
-          ? { status: 'authorized', message: 'GitHub OAuth 身份及 App 仓库范围已验证；写入仍由 GitHub 最终授权。' }
-          : { status: 'denied', message: '当前 OAuth 用户不能通过 App 访问此仓库。' })
+          ? { key: routeKey, status: 'authorized',
+            message: 'GitHub OAuth 身份与 App 仓库范围已验证。' }
+          : { key: routeKey, status: 'denied',
+            message: '当前 OAuth 用户不能通过 App 访问此仓库。' })
       } catch (error) {
-        if (!abort.signal.aborted) setAuth({ status: 'error', message: asIssueError(error).message })
+        if (!abort.signal.aborted) setAuth({
+          key: routeKey, status: 'error', message: asIssueError(error).message,
+        })
       }
     })()
     return () => abort.abort()
-  }, [service, owner, repo, valid])
+  }, [service, owner, repo, valid, routeKey])
 
-  const completePages = Boolean(state.issue && !state.hasMore && !state.pageError &&
-    state.comments.length >= state.issue.comments)
-  const summary = useMemo(() =>
-    summarizeIssueComments(state.comments, completePages), [state.comments, completePages])
-  const canWrite = auth.status === 'authorized' && Boolean(state.issue)
+  const issue = state.key === routeKey && !state.loading ? state.issue : null
+  const completePages = Boolean(issue && !state.hasMore && !state.pageError &&
+    state.comments.length >= issue.comments)
+  const summary = useMemo(() => summarizeIssueComments(
+    state.key === routeKey ? state.comments : [], completePages),
+  [state.key, state.comments, routeKey, completePages])
+  const authStatus = auth.key === routeKey ? auth.status : 'checking'
+  const canWrite = authStatus === 'authorized' && Boolean(issue)
   const loginUrl = '/api/github-login?return_to=' + encodeURIComponent(location.pathname)
 
+  const permission: PermissionView = {
+    state: authStatus,
+    allowed: canWrite,
+    reason: authStatus === 'checking' ? '正在确认 GitHub OAuth 身份与仓库访问权限。'
+      : authStatus === 'anonymous' ? '匿名用户只能阅读，发表评论或登记劳动需登录 GitHub。'
+      : authStatus === 'denied' ? '当前 OAuth 用户未获此仓库的 App 授权，不能提交。'
+      : authStatus === 'error' ? '无法确认写入权限：' + auth.message + '。'
+      : canWrite ? '' : '当前 Issue 尚未成功加载，暂不能提交。',
+    loginHref: authStatus === 'anonymous' || authStatus === 'denied' ||
+      authStatus === 'error' ? loginUrl : null,
+    loginText: authStatus === 'anonymous' ? 'GitHub 登录' : '重新授权',
+  }
+
   async function loadMore() {
-    if (!valid || !owner || !repo || !state.issue || !state.hasMore || state.fetchingMore) return
+    if (!valid || !owner || !repo || !issue || !state.hasMore || state.fetchingMore) return
     const current = revision.current
     setState(previous => ({ ...previous, fetchingMore: true, pageError: '' }))
     try {
@@ -138,7 +156,7 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
       if (current !== revision.current) return
       setState(previous => ({ ...previous, fetchingMore: false, page: previous.page + 1,
         comments: uniqueComments([...previous.comments, ...next.items]),
-        hasMore: next.hasMore, pageError: '' }))
+        lastRead: new Date().toISOString(), hasMore: next.hasMore, pageError: '' }))
     } catch (error) {
       if (current === revision.current) setState(previous => ({
         ...previous, fetchingMore: false, pageError: asIssueError(error).message,
@@ -147,169 +165,129 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
   }
 
   async function submit(body: string, kind: 'comment' | 'labour') {
-    if (!canWrite || pending || !owner || !repo || !valid || !body.trim() ||
+    if (!canWrite || pendingKind || !owner || !repo || !valid || !body.trim() ||
         body.length > 20000 || !window.confirm('确认以当前 GitHub OAuth 用户身份发表这条' +
           (kind === 'labour' ? '劳动记录' : '评论') + '？')) return
     const current = revision.current
-    setPending(true)
-    setWriteError('')
-    setNotice('')
+    setPendingKind(kind)
+    setNotice(null)
     try {
       const response = await service.postComment(owner, repo, numberValue, body,
         controller.current?.signal || new AbortController().signal)
       if (current !== revision.current) return
       if (kind === 'comment') setDraft('')
-      else { setWork(''); setOutcome(''); setCommits(''); setStart(''); setEnd('') }
-      setNotice('GitHub 已确认发表：评论 #' + response.id + '。正在重新加载 Issue。')
+      else setLabour(previous => ({ ...initialLabour, hours: previous.hours }))
+      setNotice({ kind, tone: 'success',
+        message: 'GitHub 已确认发表：评论 #' + response.id + '。正在重新读取 Issue 与评论。' })
       setReload(value => value + 1)
     } catch (error) {
-      if (current === revision.current) setWriteError(asIssueError(error).message +
-        '。如返回状态未知，请先在 GitHub 检查，以免重复提交。')
+      if (current === revision.current) setNotice({ kind, tone: 'error',
+        message: asIssueError(error).message +
+          '。如提交状态未知，请先在 GitHub 检查，避免重复发表。' })
     } finally {
-      if (current === revision.current) setPending(false)
+      if (current === revision.current) setPendingKind(null)
     }
   }
 
-  function submitComment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    void submit(draft, 'comment')
-  }
-  function submitLabour(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  function submitLabour() {
     try {
-      const shas = commits.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
+      const shas = labour.commits.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
       const toRfc3339 = (value: string) => value ? new Date(value).toISOString() : ''
-      const body = formatLabourComment({ work, hr: Number(hours), outcome, commits: shas,
-        start: toRfc3339(start), end: toRfc3339(end) })
+      const body = formatLabourComment({ work: labour.work, hr: Number(labour.hours),
+        outcome: labour.outcome, commits: shas,
+        start: toRfc3339(labour.start), end: toRfc3339(labour.end) })
       void submit(body, 'labour')
     } catch {
-      setWriteError('劳动记录不符合 §9.4：请检查工作内容、0.5 小时步长、完整 Commit SHA 和起止时间。')
+      setNotice({ kind: 'labour', tone: 'error',
+        message: '劳动记录不符合 §9.4：请检查工作内容、0.5 小时步长、完整 Commit SHA 和起止时间。' })
     }
   }
 
-  return <div className={styles.page}>
-    <nav className={styles.top} aria-label="Issue 导航">
-      <Link to="/">Playground</Link>
-      <Link to={'/' + target}>返回仓库页</Link>
-    </nav>
-    {(state.key !== routeKey || state.loading) && <p role="status">正在读取 GitHub Issue、配置与评论…</p>}
-    {state.key === routeKey && state.error && <section className={styles.panel}>
-      <h1>{state.error.status === 404 ? '404 · Issue 不存在' : 'Issue 无法加载'}</h1>
-      <p role="alert">{state.error.message}（HTTP {state.error.status}）</p>
-      <button className={styles.action} type="button" onClick={() => setReload(i => i + 1)}>
-        重试读取
-      </button>
-    </section>}
-    {state.key === routeKey && state.issue && <>
-      <header className={styles.panel}>
-        <p className={styles.meta}>{target} · #{state.issue.number} · {state.issue.state === 'open' ? 'Open' : 'Closed'}</p>
-        <h1>{state.issue.title}</h1>
-        <p className={styles.meta}>创建者：{state.issue.user?.login || '未知'} ·
-          创建于 {state.issue.created_at || '未知'}
-          {safeGitHubUrl(state.issue.html_url) && <> · <a href={safeGitHubUrl(state.issue.html_url)!}
-            rel="noreferrer" target="_blank">GitHub 原文</a></>}
-        </p>
-        <div className={styles.body}>{state.issue.body || '（无正文）'}</div>
-      </header>
-      <div className={styles.tabs} role="tablist" aria-label="Issue 内容">
-        <button type="button" role="tab" aria-selected={tab === 'discussion'}
-          onClick={() => setTab('discussion')}>讨论</button>
-        <button type="button" role="tab" aria-selected={tab === 'labour'}
-          onClick={() => setTab('labour')}>劳动历史</button>
-      </div>
-      {!summary.complete && <p role="status" className={styles.warning}>
-        当前资料尚不能视为完整：{state.hasMore ? '还有未加载的评论。' : ''}
-        {state.pageError ? '分页失败：' + state.pageError + '。' : ''}
-        {state.comments.length < state.issue.comments ? '评论数量尚未核对完毕。' : ''}
-        {summary.invalidCandidates.length ? '有格式无效的劳动评论。' : ''}
-        {summary.conflicts.length ? '有重复关联的 Commit 待处理。' : ''}
-      </p>}
-      <p className={styles.meta}>已加载 {state.comments.length} / {state.issue.comments} 条 GitHub 评论。
-        {state.hasMore && <button className={styles.action} type="button"
-          disabled={state.fetchingMore} onClick={() => void loadMore()}>
-          {state.fetchingMore ? '加载中…' : '加载下一页评论'}
-        </button>}
-        {state.pageError && <button className={styles.action} type="button"
-          onClick={() => void loadMore()}>重试分页</button>}
-      </p>
-      {tab === 'discussion' ? <section className={styles.panel} aria-label="普通讨论">
-        <h2>讨论</h2>
-        <ul className={styles.list}>{summary.discussion.map(comment => <li key={comment.id}>
-          <article>
-            <p className={styles.meta}>{comment.user?.login || '未知'} · {comment.created_at}
-              {safeGitHubUrl(comment.html_url) && <> · <a
-                href={safeGitHubUrl(comment.html_url)!} target="_blank" rel="noreferrer">来源</a></>}
-            </p>
-            <div className={styles.body}>{comment.body || '（空评论）'}</div>
-          </article>
-        </li>)}</ul>
-        {!summary.discussion.length && <p>当前已加载的评论中没有普通讨论。</p>}
-        <form className={styles.form} onSubmit={submitComment}>
-          <label>发表评论（Markdown）
-            <textarea rows={5} maxLength={20000} value={draft}
-              onChange={e => setDraft(e.target.value)} />
-          </label>
-          <button type="submit" disabled={!canWrite || pending || !draft.trim()}>
-            {pending ? '提交中…' : '确认以 GitHub 身份评论'}
-          </button>
-        </form>
-      </section> : <section className={styles.panel} aria-label="当前 Issue 劳动历史">
-        <h2>当前 Issue 劳动历史</h2>
-        <p><strong>{summary.hours} 小时</strong> · {summary.complete
-          ? '已读取评论中的无冲突主观登记工时（完整）'
-          : '仅为已读取且无冲突的主观登记工时，非完整汇总'}</p>
-        <p className={styles.meta}>没有可靠关联到当前 Issue 的独立 Commit 不参与统计；不扫描全仓库提交。</p>
-        <ul className={styles.list}>{summary.records.map(record => <li key={record.comment.id}
-          className={styles.record}>
-          <p className={styles.meta}>{record.comment.user?.login || '未知'} · GitHub 提交时间
-            {record.comment.created_at}
-            {safeGitHubUrl(record.comment.html_url) && <> · <a
-              href={safeGitHubUrl(record.comment.html_url)!} target="_blank" rel="noreferrer">原始劳动评论</a></>}
-          </p>
-          <div className={styles.body}>{record.work}</div>
-          <p>主观估时：{record.hours} 小时 {record.conflicted && <span className={styles.warning}>
-            · Commit 冲突，暂不计入汇总</span>}</p>
-          {record.outcome && <p className={styles.body}>成果：{record.outcome}</p>}
-          <p className={styles.meta}>劳动发生时间：{record.startEnd
-            ? record.startEnd.start + ' — ' + record.startEnd.end : '未登记'}</p>
-          {record.commits.map(sha => <p className={styles.commit} key={sha}>
-            Commit：<a href={'https://github.com/' + target + '/commit/' + sha}
-              target="_blank" rel="noreferrer">{sha}</a>
-          </p>)}
-        </li>)}</ul>
-        {!summary.records.length && <p>当前已加载的评论中没有有效劳动记录。</p>}
-        {summary.invalidCandidates.length > 0 && <p className={styles.warning}>
-          {summary.invalidCandidates.length} 条候选劳动评论格式无效，按普通讨论保留；完整统计不可确认。</p>}
-        <form className={styles.form} onSubmit={submitLabour}>
-          <h3>登记劳动记录</h3>
-          <label>工作内容（必填）<textarea rows={4} required value={work}
-            onChange={e => setWork(e.target.value)} /></label>
-          <label>主观估时 / 小时（0.5 递增）
-            <input required type="number" min="0.5" step="0.5" value={hours}
-              onChange={e => setHours(e.target.value)} />
-          </label>
-          <label>成果（可选）<textarea rows={3} value={outcome}
-            onChange={e => setOutcome(e.target.value)} /></label>
-          <label>关联 Commit SHA（可选；逗号或换行分隔）
-            <textarea rows={3} value={commits} onChange={e => setCommits(e.target.value)} />
-          </label>
-          <label>开始时间（可选）<input type="datetime-local" value={start}
-            onChange={e => setStart(e.target.value)} /></label>
-          <label>结束时间（可选；与开始时间成对）<input type="datetime-local" value={end}
-            onChange={e => setEnd(e.target.value)} /></label>
-          <button type="submit" disabled={!canWrite || pending || !work.trim()}>
-            {pending ? '提交中…' : '确认登记到 GitHub 评论'}
-          </button>
-        </form>
-      </section>}
-      {auth.status === 'checking' && <p role="status">正在检查 GitHub OAuth 身份…</p>}
-      {auth.status === 'anonymous' && <p>匿名公开只读。<a href={loginUrl}>
-        使用 GitHub OAuth 登录后申请评论权限</a></p>}
-      {(auth.status === 'denied' || auth.status === 'error') &&
-        <p role="alert" className={styles.warning}>{auth.message} · <a href={loginUrl}>重新授权</a></p>}
-      {auth.status === 'authorized' && <p className={styles.meta}>{auth.message}</p>}
-      {notice && <p role="status" className={styles.success}>{notice}</p>}
-      {writeError && <p role="alert" className={styles.error}>{writeError}</p>}
-    </>}
-  </div>
+  const warnings: string[] = []
+  if (issue && state.hasMore) warnings.push('还有未加载的评论。当前统计不能视为完整。')
+  if (issue && state.comments.length < issue.comments) {
+    warnings.push('GitHub 评论数量尚未核对完毕。')
+  }
+  if (summary.invalidCandidates.length) warnings.push('存在格式无效的候选劳动记录。')
+  if (summary.conflicts.length) warnings.push('存在重复关联 Commit 的劳动记录，冲突记录暂不计入总数。')
+
+  const latestOutcome = [...summary.records].filter(record => !record.conflicted && record.outcome)
+    .sort((a, b) => (Date.parse(b.comment.created_at) || 0) -
+      (Date.parse(a.comment.created_at) || 0))[0]
+  const model: IssueDetailViewModel = {
+    routeKey,
+    navigation: { homeHref: '/', repositoryHref: '/' + target, repository: target },
+    load: {
+      phase: state.key !== routeKey || state.loading ? 'loading'
+        : state.error ? 'error' : 'ready',
+      error: state.key === routeKey ? state.error?.message || null : null,
+      statusCode: state.key === routeKey ? state.error?.status || null : null,
+    },
+    issue: issue ? {
+      number: issue.number, title: issue.title, state: issue.state === 'open' ? 'Open' : 'Closed',
+      author: issue.user?.login || '未知', created: issue.created_at || '未知',
+      body: issue.body || '（无正文）', sourceUrl: safeGitHubUrl(issue.html_url),
+      updated: issue.updated_at || '未知',
+      labourSummary: {
+        hours: summary.hours, complete: summary.complete,
+        statusText: summary.complete
+          ? '已读取全部评论；仅合计无冲突的有效主观登记工时。'
+          : '仅为已读取评论中的无冲突主观登记工时，非完整汇总。',
+        outcome: latestOutcome ? {
+          text: latestOutcome.outcome!, author: latestOutcome.comment.user?.login || '未知',
+          time: latestOutcome.comment.created_at,
+          sourceUrl: safeGitHubUrl(latestOutcome.comment.html_url),
+        } : null,
+        outcomeEmptyText: summary.complete
+          ? '当前 Issue 没有已登记的有效成果。'
+          : '目前已读取的记录中暂无可确认的成果；评论尚可能不完整。',
+      },
+      pagination: {
+        loaded: state.comments.length, expected: issue.comments, hasMore: state.hasMore,
+        fetchingMore: state.fetchingMore, error: state.pageError, lastRead: state.lastRead,
+        warnings, complete: completePages,
+      },
+      discussion: {
+        comments: summary.discussion.map(item => ({
+          id: item.id, author: item.user?.login || '未知', time: item.created_at,
+          body: item.body || '（空评论）', sourceUrl: safeGitHubUrl(item.html_url),
+        })),
+        emptyText: completePages
+          ? '当前 Issue 没有普通讨论评论。'
+          : '已读取的评论中尚无普通讨论；还有评论可能未取得。',
+      },
+      labour: {
+        records: summary.records.map(record => ({
+          id: record.comment.id, author: record.comment.user?.login || '未知',
+          time: record.comment.created_at, work: record.work, hours: record.hours,
+          outcome: record.outcome, conflicted: record.conflicted,
+          occurrence: record.startEnd
+            ? record.startEnd.start + ' — ' + record.startEnd.end : '未登记',
+          sourceUrl: safeGitHubUrl(record.comment.html_url),
+          commits: record.commits.map(sha => ({
+            sha, href: 'https://github.com/' + target + '/commit/' + sha,
+          })),
+        })),
+        emptyText: completePages
+          ? '当前 Issue 没有有效 Labour Record 登记。'
+          : '已读取的评论中尚无有效劳动记录；仍有评论可能未取得。',
+        invalidCount: summary.invalidCandidates.length,
+      },
+    } : null,
+    form: { draft, labour, pending: Boolean(pendingKind), pendingKind,
+      notice, permission },
+  }
+
+  const actions: IssueDetailViewActions = {
+    onRetry: () => setReload(value => value + 1),
+    onRefresh: () => { if (!pendingKind) setReload(value => value + 1) },
+    onLoadMore: () => { void loadMore() },
+    onCommentChange: setDraft,
+    onLabourChange: (field: LabourField, value: string) => {
+      setLabour(previous => ({ ...previous, [field]: value }))
+    },
+    onSubmitComment: () => { void submit(draft, 'comment') },
+    onSubmitLabour: submitLabour,
+  }
+  return <IssueDetailView key={routeKey} model={model} actions={actions}/>
 }
