@@ -1,6 +1,6 @@
-# LabourChain UI/UX 设计地图（仓库首页 · Kanban · Issue）
+# LabourChain UI/UX 设计地图（仓库首页 · 团队成员 · Kanban · Issue）
 
-> **版本：v0.2 · 2026-11-05 · 选择性同步 #23 设计信息；Kanban 设计保留，开发优先级后置；非功能完成报告**
+> **版本：v0.3 · 2026-11-07 · 同步团队成员展示与登记 D1–D3 设计决策；Kanban 设计保留，开发优先级后置；非功能完成报告**
 >
 > **主任务：** [#2 仓库项目页面 / Board / Issue](https://github.com/Ri0n72Y/hackathon-platform/issues/2)  
 > **详细决策文本：** [UI/UX 设计基线](./LabourChain-Repo-Board-Issue-UX-Baseline.md)  
@@ -31,7 +31,9 @@
 ```mermaid
 flowchart TB
     ROOT["平台入口 / （本轮不细化）"]
-    HOME["仓库首页 /{owner}/{repo}<br/>Title + 成员悬浮详情 · Issue 正文动态；无 Board"]
+    HOME["仓库首页 /{owner}/{repo}<br/>Title + 单行成员头像 Hover 卡片 · Issue 正文动态；无 Board"]
+    MEMBERS["成员展示页 /{owner}/{repo}/members<br/>完整成员资料"]
+    REGISTER["成员登记页 /{owner}/{repo}/members/register<br/>简单表单 · Bot Commit/PR"]
     KANBAN["Kanban 专注页 /{owner}/{repo}/kanban<br/>完整看板 · URL 筛选排序"]
     ISSUE["Issue 详情 /{owner}/{repo}/issues/{number}<br/>社区讨论优先 · 独立 URL"]
     TABS["讨论 / 劳动历史 Tab"]
@@ -39,6 +41,8 @@ flowchart TB
     CHANNEL["Channel / 频道（#20 另行探索）"]
     AI["AI 摘要 / Agent（未来实验）"]
     ROOT --> HOME
+    HOME --> MEMBERS
+    MEMBERS --> REGISTER
     HOME -.->|"后续阶段：进入独立看板"| KANBAN
     HOME -->|"点击卡片"| ISSUE
     KANBAN -->|"点击卡片"| ISSUE
@@ -48,13 +52,15 @@ flowchart TB
     ISSUE -.-> AI
 ```
 
-**路由约束已确认**：`/` 平台入口、`/{owner}/{repo}` 仓库首页、`/{owner}/{repo}/kanban?filter=…&sort=…` 独立看板页（后置实现）、`/{owner}/{repo}/issues/{number}` 详情。第一版项目主页不展示看板，也不提供首页 Board 预览。独立看板实现后，其 URL 筛选/排序应可分享、可刷新；独立 Issue 的直接访问与 Back/Forward 需成立。具体 query 参数 schema 尚待定稿。
+**路由约束已确认**：`/` 平台入口、`/{owner}/{repo}` 仓库首页、`/{owner}/{repo}/members` 成员展示页、`/{owner}/{repo}/members/register` 成员登记页、`/{owner}/{repo}/kanban?filter=…&sort=…` 独立看板页（后置实现）、`/{owner}/{repo}/issues/{number}` 详情。第一版项目主页不展示看板，也不提供首页 Board 预览。独立看板实现后，其 URL 筛选/排序应可分享、可刷新；独立 Issue 的直接访问与 Back/Forward 需成立。具体 query 参数 schema 尚待定稿。
 
 ## 2. 分页面设计进度
 
 | 页面 / 区域 | 已完成的设计决定 | 未完成的部分 | 现阶段判断 |
 | --- | --- | --- | --- |
-| **仓库首页** `/{owner}/{repo}` | 单仓库首页；Title/精简 README、成员头像悬浮详情、Repo 动态；动态正文来自所展示 Issue 的第一楼，按 Markdown 与平台扩展格式（含视频外链）渲染；第一版不显示 Board | 首屏尺寸、README 来源/折叠策略、`team-member.json` 字段与悬浮层级、Markdown/视频外链扩展边界、刷新与失败回退、真实响应式视觉稿 | 🟡 D1 部分补充、D2 低保真、D3/D4 未完成 |
+| **仓库首页** `/{owner}/{repo}` | 单仓库首页；Title/精简 README、单行成员头像 Hover 卡片、Repo 动态；动态正文来自所展示 Issue 的第一楼，按 Markdown 与平台扩展格式（含视频外链）渲染；第一版不显示 Board | README 来源/折叠策略、Markdown/视频外链扩展边界、主页整体响应式与真实浏览器走查 | 🟡 D1/D2 已有；成员区 D3 已明确；整体 D4 未完成 |
+| **成员展示页** `/{owner}/{repo}/members` | 展示完整成员资料；两列桌面/单列窄屏；按 JSON 顺序；GitHub 账号可选；有权限者可添加 | 真实数据/空态、窄屏与键盘/屏幕阅读器走查 | 🟡 D1–D3 已明确，D4 未完成 |
+| **成员登记页** `/{owner}/{repo}/members/register` | 简单单列表单；当前登录操作者与展示分支明确；Bot Commit/PR；提交记录保留操作者；冲突/权限/等待合并状态明确 | GitHub App Contents/PR 权限与真实 Bot 写入；完整表单原型、失败恢复与窄屏/键盘走查 | 🟡 D1–D3 已明确；技术权限和 D4 未验证 |
 | **独立 Kanban 页面（后置）** `/{owner}/{repo}/kanban` | 保留既有看板、CardItem、状态标签、筛选排序与操作设计；不嵌入项目主页；后续阶段单独实现 | **工具栏布局、详细 CardItem 信息密度、完整工作流、桌面/触屏 DnD 与大量卡片的滚动/分页** | ⏸ 设计保留，实施后置 |
 | **Kanban 设计保留说明** | #23 的 Namespace/最大标签、跨列只改受管标签、同列清空 Filter 后临时排序、团队共享视图和归档过滤均作为**后续实现的有效设计输入**，仅开发优先级调整 | 复核配置 `views` 格式与操作细节，不在当前 MVP 首页提前实现 | ⏸ |
 
@@ -68,6 +74,8 @@ flowchart TB
 
 | 组件 / 规则 | 现已确认 | 下一步需补齐 | 状态 |
 | --- | --- | --- | --- |
+| **TeamAvatar / MemberPopover** | 主页单行头像；鼠标 Hover、键盘聚焦、触屏点击打开同一非模态卡片；指针可移入卡片；Escape/外部点击关闭；缺失头像回退首字母 | 真实组件的焦点顺序、视口边界定位、窄屏与读屏走查 | 🟡 D1–D3 已明确，D4 未完成 |
+| **MemberProfile / RegisterMemberForm** | `/members` 完整资料页；`/members/register` 单列表单；GitHub 账号选填；Bot 写入与操作者归属分离；PR 未合并不提前显示 | 真实 GitHub App 权限、分支保护、SHA 冲突与端到端状态走查 | 🟡 D1–D3 已明确，技术验证/D4 未完成 |
 | **CardItem（平衡密度，后置细化）** | 标题、Issue 编号、多 Assignees 等基础任务信息保留；#23 的**不显示劳动工时/outcome**与现行基线的**显示最近劳动成果与工时**均是历史设计版本，待 Kanban 阶段确认最终密度，不能因优先级后置否定原设计 | 卡片是否展示劳动摘要、尺寸、Branch 来源、长文本回退 | ⏸ |
 | **Board 分列规则（后置）** | 可选仓库配置的有效 Namespace；多有效标签按配置顺序最大者归列；任何 Namespace 下 `status:archived` 默认隐藏，明确在 Filter 选择「包含 archived」才显示；GitHub Open/Closed 独立，Closed 默认隐藏。不是只能用 `status:*` 分列 | 标签异常、权限、Closed/归档分页 | ⏸ |
 | **版本** | `version:*` 默认不开启、按需启用，可**多选**；每个 Issue **仅一个整体 status**，正文区分各版本工作 | 设置入口/筛选交互、数据展示细节和缺省态 | 🟡 |
@@ -94,6 +102,7 @@ flowchart TB
 | **J5 登记劳动**：Issue → 劳动历史 Tab → 表单 → GitHub 评论 | 当前 Issue 的结构化记录与普通讨论分离；采用产品规格 §9.4，`hr` 有/无 `h` 均为可统计小时 | 验证表单/手写 YAML、写入后读取、错误恢复 | 🟡 |
 | **J6 回访 Issue**：读取本地 KV → 未读分界 → 接续阅读 | 首访/回访规则已定 | 内容更新/删除、未读计算、边界情形 | 🟡 |
 | **J7 异常恢复**：授权不足/数据失败 → 可理解反馈 → 重试 | 不虚报写入和不推断缺失数据的原则已定 | 完整错误场景原型与走查 | ⬜ |
+| **J8 管理团队成员**：项目主页头像 → 成员页 → 登录/权限检查 → 登记表单 → Bot Commit/PR | 单行头像 Hover 卡片、成员页、选填 GitHub 账号、当前展示分支目标、操作者归属和 PR 待合并反馈已定 | 实际 OAuth/Repo 权限、Bot Contents/PR 权限、SHA 冲突、触屏/键盘/窄屏完整走查 | 🟡 D1–D3 已明确，D4/真实写入未完成 |
 
 ## 5. 本阶段已完成了什么、未完成什么
 
@@ -106,6 +115,7 @@ flowchart TB
 - [x] 确定 Issue 的**社区优先、两侧栏默认隐藏、讨论/劳动双 Tab**结构。
 - [x] 确定关键 Board 状态、版本多选与整体 status、同列临时排序与跨列写回原则。
 - [x] 确定 Assignees / Contributors / 工时 / outcome 的语义边界。
+- [x] 确定 Team 单行头像、Hover 详情卡片、`/members` 与 `/members/register` 路由、成员 JSON 最小字段和 Bot Commit/PR 交互契约。
 - [x] 确定讨论输入、劳动表单与本地阅读进度的交互原则。
 - [x] 将 AI-native 未来方向与跨仓库社区议题**隔离记录**，不混入当前交付。
 - [x] 建立 [详细决策基线](./LabourChain-Repo-Board-Issue-UX-Baseline.md) 和**本设计地图**。
@@ -113,7 +123,8 @@ flowchart TB
 ### 尚未完成：可交付的细节设计与验证
 
 - [ ] Kanban **专注页**详细视觉/布局、信息密度和工具栏。
-- [ ] 首页 **README、成员头像悬浮详情、Issue 正文动态的 Markdown/扩展格式渲染**，以及移动端与异常态；不包含 Board。
+- [ ] 首页 README 与 Issue 正文 Markdown/扩展格式渲染，以及移动端与异常态；不包含 Board。
+- [ ] Team Hover 卡片、成员页与登记表单的真实组件/窄屏/键盘/读屏走查；Bot Contents/PR 权限和 GitHub 写入链路必须真实验证。
 - [ ] Issue **完整页面**（讨论流、劳动历史、属性侧栏）在桌面和窄屏上的可操作原型。
 - [ ] 以产品规格 §9.4 校验表单、手写 YAML、`hr` 可选 `h` 和当前 Issue 关联规则，记录真实已验证步骤。
 - [ ] 所有编辑/拖动/评论的权限、网络失败与恢复细节。
@@ -131,7 +142,7 @@ flowchart TB
 
 | 顺序 | 设计交付物 | 结束条件 |
 | --- | --- | --- |
-| **P1 · 下一步** | **Repo 项目主页内容**：成员头像悬浮详情、Issue 第一楼的 Markdown/扩展格式渲染；看板交互设计保留但实施延后 | 能核对成员信息来源、正文与评论边界、视频外链等扩展内容及异常回退；未解决项有标注 |
+| **P1 · 下一步** | **Repo 项目主页与团队成员管理设计交付**：单行头像 Hover、`/members`、`/members/register` 与 Issue 第一楼 Markdown/扩展格式；看板交互设计保留但实施延后 | 成员资料来源、表单校验、Bot/操作者归属、Commit/PR 状态及窄屏/键盘行为均有明确契约；技术权限缺口单独标注 |
 | **P2** | 仓库首页完整低保真（精简 README / 成员详情 / Repo 动态；不含 Board） | 成员信息与动态正文层级清楚，首页不依赖看板即可理解项目 |
 | **P3** | 独立 Issue 完整低保真（讨论/劳动、左右侧栏、Markdown 输入） | 首访/回访、评论和劳动登记的主状态都能走通 |
 | **P4** | 端到端可交互原型及错误/权限状态 | 可完成 J1–J7 认知走查，覆盖 Back/Forward、移动端和恢复机制 |
