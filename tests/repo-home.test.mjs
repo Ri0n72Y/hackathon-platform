@@ -235,7 +235,8 @@ test('repo-home: forged cross-origin submission is rejected before Bot write', a
 test('repo-home review B1: collapsed prefix keeps complete Markdown/media links in source order', () => {
   const body = '# Update\n\n**News** [release notes](https://example.org/release)\n\n' +
     '![screenshot](https://example.org/pic.jpg)\n\n@[video](https://youtu.be/example)\n\n' +
-    'Later details that must not be focusable ' + 'very-long-followup '.repeat(70)
+    'Later details that may be previewed ' + 'very-long-followup '.repeat(70) +
+    '[hidden action](https://example.org/hidden)'
   const preview = previewMarkdown(body, 460)
   assert.match(preview, /^# Update/)
   assert.ok(preview.includes('**News**'))
@@ -244,7 +245,8 @@ test('repo-home review B1: collapsed prefix keeps complete Markdown/media links 
   const video = preview.indexOf('@[video](https://youtu.be/example)')
   assert.ok(link >= 0 && image > link && video > image, 'media and text links retain original sequence')
   assert.ok(preview.length < body.length, 'hidden continuation must be absent, not CSS-clipped')
-  assert.doesNotMatch(preview, /very-long-followup/)
+  assert.doesNotMatch(preview, /\[hidden action\]\(https:\/\/example.org\/hidden\)/,
+    'links after the preview boundary must not be in the rendered Markdown tree')
   assert.match(preview, /…$/)
 })
 test('repo-home review B2: registration target scope separates repo and display branch', () => {
