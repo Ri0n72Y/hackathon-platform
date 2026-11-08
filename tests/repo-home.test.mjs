@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, randomBytes } from 'node:crypto'
-import { parseTeamFile, validateMemberInput, appendMemberFile, summarizeReadme, safeHttps } from '../plugins/repo-home/src/domain.mjs'
+import { parseTeamFile, validateMemberInput, appendMemberFile, summarizeReadme, safeHttps, previewMarkdown, memberRegistrationScope } from '../plugins/repo-home/src/domain.mjs'
 import { paramsFor } from '../api/_repo-home-access.mjs'
 import feedEndpoint from '../api/repo-feed.mjs'
 import homeEndpoint from '../api/repo-home.mjs'
@@ -42,6 +42,10 @@ function makeGitHubMock(options = {}) {
       { token: method + '-installation-token' })
     if (method === 'GET' && path === '/repos/octocat/hello/branches/main') return response(200,
       { name: 'main', protected: options.protected !== false, commit: { sha: 'abc123' } })
+    if (method === 'GET' && path === '/repos/octocat/hello/rules/branches/main') {
+      if (options.rulesFail) return response(options.rulesFail, { message: 'Rules unavailable' })
+      return response(200, options.rules || [])
+    }
     if (method === 'GET' && path === '/app/installations/17') return response(200,
       { permissions: { contents: options.contents || 'write',
         pull_requests: options.pull_requests || 'write', metadata: 'read' } })
@@ -68,6 +72,8 @@ function makeGitHubMock(options = {}) {
     if (method === 'POST' && path === '/repos/octocat/hello/git/refs') return response(201,
       { ref: 'refs/heads/labourchain/team-member-123' })
     if (method === 'PUT' && path === '/repos/octocat/hello/contents/team-member.json') {
+      if (options.validation422) return response(422, { message: 'Validation Failed: invalid commit payload' })
+      if (options.directDenied) return response(403, { message: 'Write access denied' })
       if (options.conflict && !conflicted) { conflicted = true; return response(409, { message: 'conflict' }) }
       return response(201, { commit: { sha: 'saved-commit' }, content: { sha: 'new-file-sha' } })
     }
@@ -222,5 +228,101 @@ test('repo-home: forged cross-origin submission is rejected before Bot write', a
     }))
     assert.equal(result.status, 403)
     assert.equal(mock.writes.length, 0)
+  })
+})
+
+
+test('repo-home review B1: collapsed prefix keeps complete Markdown/media links in source order', () => {
+  const body = '# Update\n\n**News** [release notes](https://example.org/release)\n\n' +
+    '![screenshot](https://example.org/pic.jpg)\n\n@[video](https://youtu.be/example)\n\n' +
+    'Later details that must not be focusable ' + 'very-long-followup '.repeat(70)
+  const preview = previewMarkdown(body, 460)
+  assert.match(preview, /^# Update/)
+  assert.ok(preview.includes('**News**'))
+  const link = preview.indexOf('[release notes](https://example.org/release)')
+  const image = preview.indexOf('![screenshot](https://example.org/pic.jpg)')
+  const video = preview.indexOf('@[video](https://youtu.be/example)')
+  assert.ok(link >= 0 && image > link && video > image, 'media and text links retain original sequence')
+  assert.ok(preview.length < body.length, 'hidden continuation must be absent, not CSS-clipped')
+  assert.doesNotMatch(preview, /very-long-followup/)
+  assert.match(preview, /…$/)
+})
+test('repo-home review B2: registration target scope separates repo and display branch', () => {
+  const a = memberRegistrationScope('octocat', 'hello', 'main')
+  assert.equal(a, memberRegistrationScope('Octocat', 'HELLO', 'main'))
+  assert.notEqual(a, memberRegistrationScope('octocat', 'other', 'main'))
+  assert.notEqual(a, memberRegistrationScope('octocat', 'hello', 'feature/member'))
+})
+test('repo-home review P1: effective pull-request Ruleset requires PR even without branch.protected', async () => {
+  await mocked({ protected: false, rules: [{ type: 'pull_request', ruleset_id: 42 }] }, async mock => {
+    const result = await permissionEndpoint.fetch(request('/api/repo-member-permission?owner=octocat&repo=hello&branch=main', {
+      headers: { Cookie: session() },
+    }))
+    assert.equal(result.status, 200)
+    const capability = await result.json()
+    assert.equal(capability.mode, 'pr')
+    assert.equal(capability.protected, true)
+    const written = await registerEndpoint.fetch(request('/api/repo-member-register', {
+      method: 'POST', headers: { Origin: origin, Cookie: session(),
+        'Content-Type': 'application/json', 'X-LabourChain-Write': '1' },
+      body: JSON.stringify({ owner: 'octocat', repo: 'hello', branch: 'main',
+        member: { name: 'Member from active Ruleset' } }),
+    }))
+    assert.equal(written.status, 202)
+    assert.ok(mock.writes.some(call => call.path.endsWith('/git/refs')))
+    assert.ok(mock.writes.some(call => call.path.endsWith('/pulls')))
+    assert.ok(mock.writes.filter(call => call.method === 'PUT').every(call =>
+      call.body.branch.startsWith('labourchain/team-member-')))
+  })
+})
+test('repo-home review P1: PR scope absent for effective protected rules denies before Bot mutation', async () => {
+  await mocked({ protected: false, rules: [{ type: 'pull_request' }], pull_requests: 'read' }, async mock => {
+    const result = await permissionEndpoint.fetch(request('/api/repo-member-permission?owner=octocat&repo=hello&branch=main', {
+      headers: { Cookie: session() },
+    }))
+    assert.equal(result.status, 403)
+    assert.match((await result.json()).error, /Pull requests: write/)
+    assert.equal(mock.writes.filter(c => c.path.endsWith('/git/refs') || c.path.endsWith('/pulls') ||
+      c.method === 'PUT').length, 0)
+  })
+})
+test('repo-home review P1: 422 validation error retains status and is never retried as SHA conflict', async () => {
+  await mocked({ protected: false, validation422: true }, async mock => {
+    const result = await registerEndpoint.fetch(request('/api/repo-member-register', {
+      method: 'POST', headers: { Origin: origin, Cookie: session(),
+        'Content-Type': 'application/json', 'X-LabourChain-Write': '1' },
+      body: JSON.stringify({ owner: 'octocat', repo: 'hello', branch: 'main',
+        member: { name: 'Validation branch' } }),
+    }))
+    assert.equal(result.status, 422)
+    const value = await result.json()
+    assert.match(value.error, /GitHub 校验失败/)
+    assert.match(value.error, /Validation Failed/)
+    assert.doesNotMatch(value.error, /SHA 冲突/)
+    assert.equal(mock.writes.filter(c => c.method === 'PUT').length, 1)
+    assert.equal(mock.writes.some(c => c.path.endsWith('/git/refs') || c.path.endsWith('/pulls')), false)
+  })
+})
+test('repo-home review P1: unverified 403 cannot trigger unapproved PR fallback', async () => {
+  await mocked({ protected: false, directDenied: true }, async mock => {
+    const result = await registerEndpoint.fetch(request('/api/repo-member-register', {
+      method: 'POST', headers: { Origin: origin, Cookie: session(),
+        'Content-Type': 'application/json', 'X-LabourChain-Write': '1' },
+      body: JSON.stringify({ owner: 'octocat', repo: 'hello', branch: 'main',
+        member: { name: 'Denied' } }),
+    }))
+    assert.equal(result.status, 403)
+    assert.equal(mock.writes.filter(c => c.method === 'PUT').length, 1)
+    assert.equal(mock.writes.some(c => c.path.endsWith('/git/refs') || c.path.endsWith('/pulls')), false)
+  })
+})
+test('repo-home review P1: unavailable effective branch rules fail closed', async () => {
+  await mocked({ protected: false, rulesFail: 403 }, async mock => {
+    const result = await permissionEndpoint.fetch(request('/api/repo-member-permission?owner=octocat&repo=hello&branch=main', {
+      headers: { Cookie: session() },
+    }))
+    assert.equal(result.status, 403)
+    assert.equal(mock.writes.filter(c => c.path.endsWith('/git/refs') || c.path.endsWith('/pulls') ||
+      c.method === 'PUT').length, 0)
   })
 })
