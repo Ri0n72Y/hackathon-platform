@@ -79,11 +79,16 @@ export async function registerMember(capability, branch, rawInput) {
   const input = validateMemberInput(rawInput)
   const token = await botToken(capability)
   if (input.githubUsername) {
-    await repoFetch(fetch, token, '/users/' + encodeURIComponent(input.githubUsername))
+    const user = await repoFetch(fetch, token, '/users/' + encodeURIComponent(input.githubUsername), {}, true)
+    if (!user) deny('填写的 GitHub 用户名不存在', 422)
   }
   const id = randomUUID()
   let writeBranch = branch
   if (capability.protectedBranch) {
+    // Validate the current file and duplicate login before creating a maintenance ref.
+    const original = await fileAt(token, capability.base, branch)
+    try { appendMemberFile(original.text, input, id) }
+    catch (error) { deny(error.message, 422) }
     writeBranch = 'labourchain/team-member-' + id
     await repoFetch(fetch, token, capability.base + '/git/refs', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -95,12 +100,28 @@ export async function registerMember(capability, branch, rawInput) {
     let content
     try { content = appendMemberFile(current.text, input, id) }
     catch (error) { deny(error.message, 422) }
+    let saved
     try {
-      const saved = (await putFile(token, capability.base, writeBranch, current, content, capability.user.login)).data
-      if (!saved.commit?.sha) deny('Bot Commit 返回无效', 502)
-      if (!capability.protectedBranch) return { status: 'committed', sha: saved.commit.sha,
-        url: 'https://github.com/' + capability.base.slice(7) + '/commit/' + saved.commit.sha }
-      const pr = (await repoFetch(fetch, token, capability.base + '/pulls', {
+      saved = (await putFile(token, capability.base, writeBranch, current, content, capability.user.login)).data
+    } catch (error) {
+      // A ruleset may block a direct commit despite an incomplete branch-protection response.
+      // Fall back only if the same App installation has already proved Pull requests: write.
+      if (!capability.protectedBranch && error.status === 403 && capability.canPullRequest) {
+        return registerMember({ ...capability, protectedBranch: true }, branch, input)
+      }
+      if (error.status === 409 || error.status === 422) {
+        if (attempt < 2) continue
+        deny('并发 SHA 冲突，请检查仓库后重试', 409)
+      }
+      throw error
+    }
+    if (!saved.commit?.sha) deny('Bot Commit 返回无效', 502)
+    if (!capability.protectedBranch) return { status: 'committed', sha: saved.commit.sha,
+      url: 'https://github.com/' + capability.base.slice(7) + '/commit/' + saved.commit.sha }
+    // A failed PR create must not repeat an already confirmed maintenance-branch commit.
+    let pr
+    try {
+      pr = (await repoFetch(fetch, token, capability.base + '/pulls', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: 'chore(team): register member (Requested by @' + capability.user.login + ')',
@@ -109,11 +130,10 @@ export async function registerMember(capability, branch, rawInput) {
           head: writeBranch, base: branch, draft: false,
         }),
       })).data
-      if (!pr.html_url) deny('Bot PR 返回无效', 502)
-      return { status: 'pending_pr', url: pr.html_url, sha: saved.commit.sha }
-    } catch (error) {
-      if (error.status !== 409 && error.status !== 422) throw error
-      if (attempt === 2) deny('并发修改冲突，请检查仓库后重试', 409)
+    } catch {
+      deny('成员已写入维护分支 ' + writeBranch + '，但 PR 创建失败。请在 GitHub 检查后再提交，避免重复添加', 502)
     }
+    if (!pr.html_url) deny('维护分支已创建，但 GitHub PR 响应无效。请先在 GitHub 检查', 502)
+    return { status: 'pending_pr', url: pr.html_url, sha: saved.commit.sha }
   }
 }
