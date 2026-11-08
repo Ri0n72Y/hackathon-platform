@@ -107,14 +107,14 @@ export function previewMarkdown(body, budget = 280) {
     if (used + cost > limit) {
       // Long unbroken prose (common in Chinese) must not bypass the first-token budget.
       // Never split structured Markdown tokens: doing so can expose partial markup or URLs.
-      if (/^[^\\s!@\\[\\]*_~\x60]+$/.test(token)) {
+      if (/^[^\s!@\[\]*_~\x60]+$/.test(token)) {
         for (const char of token) {
-          const width = /[\\u2e80-\\uffff]/.test(char) ? 2 : 1
+          const width = /[\u2e80-\uffff]/.test(char) ? 2 : 1
           if (used + width > limit) break
           result += char
           used += width
         }
-      } else if (!result.trim() && !/^[ \\t\\n]+$/.test(token)) {
+      } else if (!result.trim() && !/^[ \t\n]+$/.test(token)) {
         // The leading standalone Markdown/media token is atomic and remains intact.
         result += token
       }
