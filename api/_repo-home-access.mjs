@@ -31,7 +31,19 @@ export async function repoFetch(fetcher, token, path, init = {}, missing = false
     const limited = await isGitHubRateLimited(response)
     const status = limited ? 429 : response.status === 404 ? 404 : response.status === 401 ? 401 :
       response.status === 403 ? 403 : response.status === 409 ? 409 : response.status === 422 ? 422 : 502
-    throw new IssueAccessError(limited ? 'GitHub API 已限流' : 'GitHub 仓库 API 拒绝请求（' + status + '）', status)
+    let explanation = ''
+    if ([403, 409, 422].includes(status)) {
+      try {
+        const details = await response.clone().json()
+        if (typeof details?.message === 'string') explanation = details.message.trim().slice(0, 180)
+      } catch { /* Upstream may not return a JSON error body. */ }
+    }
+    const title = status === 422 ? 'GitHub 校验失败（422）' :
+      status === 409 ? 'GitHub 写入冲突（409）' :
+      status === 403 ? 'GitHub 权限或分支规则拒绝请求（403）' :
+      'GitHub 仓库 API 拒绝请求（' + status + '）'
+    throw new IssueAccessError(limited ? 'GitHub API 已限流' :
+      title + (explanation ? '：' + explanation : ''), status)
   }
   try { return { data: await response.json(), link: response.headers.get('link') || '' } }
   catch { throw new IssueAccessError('GitHub 返回了无效 JSON', 502) }

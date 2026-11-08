@@ -36,9 +36,22 @@ export async function memberWriteCapability({ owner, repo, branch, userToken }) 
     '/app/installations/' + installed.installationId)).data
   const perms = app.permissions || {}
   if (perms.contents !== 'write') deny('LabourChain App 缺少 Contents: write 权限')
-  const protectedBranch = selected.protected === true
-  if (protectedBranch && perms.pull_requests !== 'write') deny('受保护分支需要 App 的 Pull requests: write 权限')
-  return { ...installed, user, protectedBranch, canPullRequest: perms.pull_requests === 'write',
+  // GitHub branch.protected alone may not describe all effective repository/org Rulesets.
+  // The effective rules endpoint requires Metadata: read and includes active pull_request rules.
+  let hasPullRule = false, complete = false
+  for (let page = 1; page <= 5; page++) {
+    const rules = await readRepo(access, base + '/rules/branches/' +
+      encodeURIComponent(branch) + '?per_page=100&page=' + page)
+    if (!Array.isArray(rules.data) || rules.data.some(rule => !rule || typeof rule.type !== 'string')) {
+      deny('无法验证目标分支的 GitHub Ruleset', 502)
+    }
+    if (rules.data.some(rule => rule.type === 'pull_request')) hasPullRule = true
+    if (!/<[^>]+>;\s*rel="next"/.test(rules.link)) { complete = true; break }
+  }
+  if (!complete) deny('目标分支 Ruleset 超出可核查范围', 409)
+  const protectedBranch = selected.protected === true || hasPullRule
+  if (protectedBranch && perms.pull_requests !== 'write') deny('此分支需要 App 的 Pull requests: write 权限')
+  return { ...installed, user, protectedBranch,
     branchHead: selected.commit.sha, base }
 }
 export async function capabilityFromRequest(request, owner, repo, branch) {
@@ -104,12 +117,9 @@ export async function registerMember(capability, branch, rawInput) {
     try {
       saved = (await putFile(token, capability.base, writeBranch, current, content, capability.user.login)).data
     } catch (error) {
-      // A ruleset may block a direct commit despite an incomplete branch-protection response.
-      // Fall back only if the same App installation has already proved Pull requests: write.
-      if (!capability.protectedBranch && error.status === 403 && capability.canPullRequest) {
-        return registerMember({ ...capability, protectedBranch: true }, branch, input)
-      }
-      if (error.status === 409 || error.status === 422) {
+      // Only GitHub's explicit 409 can indicate a concurrent contents SHA conflict.
+      // 422 validation failures and unverified 403 protection denials are never retried or escalated.
+      if (error.status === 409) {
         if (attempt < 2) continue
         deny('并发 SHA 冲突，请检查仓库后重试', 409)
       }
