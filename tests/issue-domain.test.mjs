@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { parseLabourComment, formatLabourComment, summarizeIssueComments,
-  parseIssueLabels, validIssueTarget, validIssueForPage } from '../plugins/issue-detail/src/domain.mjs'
+  parseIssueLabels, validIssueTarget, validIssueForPage, validChannelIssue } from '../plugins/issue-detail/src/domain.mjs'
 
 const sha = 'a'.repeat(40)
 const labour = (hours, tail = '') => '```yaml\nlabour:\n  work: 测试工时\n  hr: ~' +
@@ -69,12 +69,14 @@ test('URL, exact channel namespace and Open/Closed validation excludes PRs', () 
   assert.deepEqual(parseIssueLabels('namespaces:\n  channel:\n    - discussion\n'),
     ['channel:discussion'])
   const issue = { number: 1, state: 'closed', labels: [{ name: 'channel:discussion' }] }
-  assert.equal(validIssueForPage(issue, ['channel:discussion']), true)
-  assert.equal(validIssueForPage({ ...issue, state: 'open' }, ['channel:discussion']), true)
-  assert.equal(validIssueForPage({ ...issue, pull_request: {} }, ['channel:discussion']), false)
-  assert.equal(validIssueForPage({ ...issue, labels: [{ name: 'channel:discussion' },
+  assert.equal(validIssueForPage(issue), true)
+  assert.equal(validIssueForPage({ ...issue, state: 'open' }), true)
+  assert.equal(validIssueForPage({ ...issue, pull_request: {} }), false)
+  assert.equal(validChannelIssue(issue, ['channel:discussion']), true)
+  assert.equal(validChannelIssue({ ...issue, pull_request: {} }, ['channel:discussion']), false)
+  assert.equal(validChannelIssue({ ...issue, labels: [{ name: 'channel:discussion' },
     { name: 'channel:other' }] }, ['channel:discussion']), false)
-  assert.equal(validIssueForPage({ ...issue, labels: [{ name: 'channel:unknown' }] },
+  assert.equal(validChannelIssue({ ...issue, labels: [{ name: 'channel:unknown' }] },
     ['channel:discussion']), false)
 })
 
