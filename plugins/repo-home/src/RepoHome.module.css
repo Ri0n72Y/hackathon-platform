@@ -16,14 +16,13 @@
 .branch{margin-top:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .branch input{border:1px solid #bcc8d7;border-radius:8px;padding:8px;max-width:220px}
 .section{margin-top:28px}
-.strip{display:flex;align-items:center;gap:8px;overflow-x:auto;overflow-y:visible;padding:8px 0 230px;margin-bottom:-220px;white-space:nowrap}
+.strip{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:8px 0;white-space:nowrap}
 .avatarItem{position:relative;flex:none}
 .avatarButton{border:0!important;border-radius:50%!important;padding:0!important;background:transparent!important}
 .avatar,.avatarLarge{display:inline-flex;justify-content:center;align-items:center;vertical-align:middle;flex:none;overflow:hidden;border-radius:50%;background:#dce7f2;color:#203a57;font-weight:700;width:40px;height:40px}
 .avatarLarge{width:56px;height:56px}
 .avatar img,.avatarLarge img{width:100%;height:100%;object-fit:cover}
-.popover{position:absolute;z-index:20;top:48px;left:0;width:min(300px,calc(100vw - 36px));max-height:360px;overflow-y:auto;white-space:normal;padding:16px;background:white;border:1px solid #cbd6e3;box-shadow:0 8px 24px #17294225;border-radius:12px}
-.avatarItem:last-of-type .popover{right:0;left:auto}
+.popover{position:fixed;z-index:20;width:min(300px,calc(100vw - 24px));max-height:min(360px,calc(100vh - 24px));overflow-y:auto;white-space:normal;padding:16px;background:white;border:1px solid #cbd6e3;box-shadow:0 8px 24px #17294225;border-radius:12px}
 .profile{display:flex;gap:12px;align-items:flex-start;white-space:normal}
 .profileText{display:grid;gap:6px;min-width:0;line-height:1.5}
 .profileText p{margin:0}
