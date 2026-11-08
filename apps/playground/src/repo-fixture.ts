@@ -46,7 +46,8 @@ export function createRepoFixtureService(query: URLSearchParams): RepoHomeApi {
       const totalPages = Math.ceil(count / 20)
       const start = (page - 1) * 20
       return { page, hasMore: page < totalPages, items: mode === 'pr-page' && page === 1 ? [] :
-        Array.from({ length: Math.max(0, Math.min(20, count - start)) }, (_, i) => sampleIssue(start + i + 1)) }
+        Array.from({ length: Math.max(0, Math.min(20, count - start)) }, (_, i) =>
+          sampleIssue(mode === 'duplicate-page' && page === 2 && i === 0 ? 1 : start + i + 1)) }
     },
     async getCapability(_owner, _repo, branch, signal) {
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')

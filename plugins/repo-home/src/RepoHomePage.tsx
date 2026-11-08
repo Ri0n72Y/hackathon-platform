@@ -24,7 +24,7 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
   const [feedLoading, setFeedLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [generation, setGeneration] = useState(0)
-  const nextPage = useRef(1), lock = useRef(false), stopped = useRef(false)
+  const nextPage = useRef(1), pendingPage = useRef<AbortController | null>(null), stopped = useRef(false)
   const controllers = useRef<Set<AbortController>>(new Set())
   const sentinel = useRef<HTMLDivElement>(null)
   const key = owner + '/' + repo
@@ -48,10 +48,10 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
   }, [api, owner, repo, branch, generation])
 
   const loadPage = useCallback(async () => {
-    if (!valid(owner, repo) || lock.current || stopped.current) return
-    lock.current = true
+    if (!valid(owner, repo) || pendingPage.current || stopped.current) return
     const page = nextPage.current
     const controller = new AbortController()
+    pendingPage.current = controller
     controllers.current.add(controller)
     setFeedLoading(true); setFeedError('')
     try {
@@ -70,14 +70,14 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
       if (!controller.signal.aborted) { stopped.current = true; setFeedError(errorText(e)) }
     } finally {
       controllers.current.delete(controller)
-      lock.current = false
+      if (pendingPage.current === controller) pendingPage.current = null
       if (!controller.signal.aborted) setFeedLoading(false)
     }
   }, [api, owner, repo])
 
   useEffect(() => {
     controllers.current.forEach(c => c.abort()); controllers.current.clear()
-    lock.current = false; stopped.current = false; nextPage.current = 1
+    pendingPage.current = null; stopped.current = false; nextPage.current = 1
     setItems([]); setHasMore(true); setFeedError(''); setFeedLoading(false)
     void loadPage()
     return () => { controllers.current.forEach(c => c.abort()); controllers.current.clear(); stopped.current = true }
@@ -85,7 +85,7 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
 
   useEffect(() => {
     const node = sentinel.current
-    if (!node || !hasMore || !!feedError) return
+    if (!node || !hasMore || !!feedError || feedLoading) return
     let timeout: ReturnType<typeof setTimeout> | undefined
     const observer = new IntersectionObserver(entries => {
       if (entries.some(x => x.isIntersecting)) {
@@ -95,11 +95,11 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
     }, { rootMargin: '400px 0px' })
     observer.observe(node)
     return () => { observer.disconnect(); if (timeout) clearTimeout(timeout) }
-  }, [hasMore, feedError, items.length, loadPage])
+  }, [hasMore, feedError, feedLoading, items.length, loadPage])
 
   function refresh() {
     controllers.current.forEach(c => c.abort()); controllers.current.clear()
-    lock.current = false; stopped.current = false
+    pendingPage.current = null; stopped.current = false
     setGeneration(value => value + 1)
   }
   const base = '/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)
