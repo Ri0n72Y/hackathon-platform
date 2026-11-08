@@ -44,7 +44,7 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
     try { setResult(await api.register(owner, repo, branch, member, controller.signal)) }
     catch (e) {
       setError(e instanceof Error ? e.message : '提交失败，请重试')
-      if (e instanceof RepoHomeError && e.status === 401) setAuthStatus(401)
+      if (e instanceof RepoHomeError && e.status === 401) { setAuthStatus(401); setCapability(null) }
     } finally { setPending(false) }
   }
   const change = (key: keyof Omit<Fields,'links'>, value: string) =>

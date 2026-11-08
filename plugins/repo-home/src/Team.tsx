@@ -14,13 +14,15 @@ export function MemberAvatar({ member, size = 'small' }: { member: Member; size?
       <span aria-hidden="true">{member.name.slice(0, 1).toUpperCase()}</span>}
   </span>
 }
-export function TeamStatus({ team, base, onRetry }: {
+export function TeamStatus({ team, base, branch = 'main', onRetry }: {
   team: Team; base: string; branch?: string; onRetry?: () => void
 }) {
   if (team.state === 'ready') return null
   if (team.state === 'missing') return <p>尚未添加团队成员。<Link to={base + '/members/register'}>添加成员</Link></p>
   if (team.state === 'empty') return <p>暂无成员。<Link to={base + '/members/register'}>添加成员</Link></p>
   return <p role="alert">{team.state === 'invalid' ? '成员文件格式错误：' : '成员文件读取失败：'}{team.error}
+    {team.state === 'invalid' && <a href={'https://github.com/' + base.slice(1) + '/blob/' +
+      encodeURIComponent(branch) + '/team-member.json'} target="_blank" rel="noopener noreferrer">查看 GitHub 成员文件</a>}
     {onRetry && <button type="button" onClick={onRetry}>重试</button>}</p>
 }
 export function MemberProfile({ member }: { member: Member }) {
