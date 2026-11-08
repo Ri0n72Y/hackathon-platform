@@ -1,0 +1,16 @@
+.markdown{line-height:1.7;min-width:0;overflow-wrap:anywhere;font-size:15px}
+.markdown a{color:#195ca8;overflow-wrap:anywhere}
+.markdown pre{white-space:pre;overflow-x:auto;background:#f2f5f8;border-radius:8px;padding:12px}
+.markdown code{background:#edf1f4;padding:1px 3px;border-radius:4px}
+.markdown pre code{background:transparent}
+.heading{font-weight:700;margin:16px 0 8px;font-size:1.1em}
+.paragraph{margin:10px 0;white-space:pre-wrap}
+.markdown blockquote{border-left:3px solid #b7c4d4;padding:2px 12px;margin:12px 0;color:#46546c}
+.markdown ul,.markdown ol{padding-left:24px}
+.markdown li .paragraph{margin:0}
+.media{margin:16px 0;max-width:100%}
+.media img{display:block;max-width:100%;height:auto;border-radius:8px}
+.media figcaption{font-size:13px;color:#576579}
+.video{border:1px solid #d5dce6;border-radius:8px;padding:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.video a{margin-left:auto}
+.invalid{color:#8f3543;overflow-wrap:anywhere}
