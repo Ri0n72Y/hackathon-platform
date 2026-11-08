@@ -28,7 +28,11 @@ node --test tests/router-fallback.test.mjs
    工时汇总为 1.5 小时；无效 YAML 评论留在普通讨论，显示不完整提示。
 3. `/sample/repo/issues/2?issueFixture=1`：Closed Issue 仍可读取。
 4. `/sample/repo/issues/3?issueFixture=1`：有 `pull_request` 字段，被拒绝并显示 404；
-   #4 无有效 `channel:*` 标签、#8 不存在，也显示 404。
+   #4 只有 `status:todo` 标签仍可读取；#8 不存在仍显示 404。
+   #12 无标签、#13 多个频道标签、#14 未配置的频道标签均可读取普通 Issue。
+   `/sample-no-config/repo/issues/1?issueFixture=1` 和
+   `/sample-bad-config/repo/issues/1?issueFixture=1` 能读取 Issue 与评论，
+   不因仓库 Config 缺失/错误被转换为 422。
 5. #5、#6、#7 分别返回 429、502、403，不得被伪装成 404；
    点击重试会再次请求受控数据。
 6. #9 有 102 条评论：先加载 100，显示“不完整”，点击“加载下一页”后为 102，
@@ -51,8 +55,8 @@ node --test tests/router-fallback.test.mjs
 
 此阶段不在开发 PR 内执行线上测试性评论写入。由 Lead 安排人工核验：
 
-- Vercel 上匿名直达公开且已获 App 授权的有效 Open/Closed Issue；检查刷新、
-  API 响应状态和配置匹配，以及未授权/私有/不存在仓库的不同错误。
+- Vercel 上匿名直达公开且已获 App 授权的普通 Open/Closed Issue；
+  检查刷新、无 Config/错误 Config 的读取及未授权/私有/不存在仓库的不同错误。
 - 确认 GitHub Issue 与 Comment 原始字段未裁剪，分页直至全部加载；
   比较原始评论顺序、当前 Issue Labour Record 分流、来源链接与统计。
 - 真实 GitHub OAuth 登录从 Issue 深链接返回同一 URL；验证无权限和授权变更的情况，
@@ -67,5 +71,5 @@ node --test tests/router-fallback.test.mjs
 
 Labour Record 只从当前 Issue 的结构化 GitHub 评论建立。评论中列出的 Commit SHA
 作为可追溯关联来源；没有独立证据证明某个 Commit 与当前 Issue 关联时，不扫描整个
-仓库也不补造 Commit Message 基础劳动记录。配置使用当前业务契约中明确的
-`channel:*` 声明；不推断缺失的频道配置。
+仓库也不补造 Commit Message 基础劳动记录。Channel 分类仍单独依赖配置中明确的 `channel:*` 声明；通用 Issue 详情不依赖 Config，
+也不推断缺失的频道配置。

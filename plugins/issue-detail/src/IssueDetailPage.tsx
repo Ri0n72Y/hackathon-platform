@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useParams } from 'react-router'
-import { formatLabourComment, parseIssueLabels, summarizeIssueComments,
-  validIssueForPage, validIssueTarget } from './domain.mjs'
+import { formatLabourComment, summarizeIssueComments, validIssueTarget } from './domain.mjs'
+import { loadIssueContent } from './load-issue.mjs'
 import { IssueRequestError, type GithubComment, type GithubIssue,
   type IssueDetailApi } from './service'
 import IssueDetailView from './IssueDetailView'
@@ -75,17 +75,10 @@ export default function IssueDetailPage({ service }: { service: IssueDetailApi }
     }
     void (async () => {
       try {
-        const [issue, config] = await Promise.all([
-          service.getIssue(owner, repo, numberValue, abort.signal),
-          service.getConfig(owner, repo, abort.signal),
-        ])
-        let labels: string[]
-        try { labels = parseIssueLabels(config) }
-        catch { throw new IssueRequestError('仓库配置无法解析，不能确认有效频道 Issue', 422) }
-        if (issue.number !== numberValue || !validIssueForPage(issue, labels)) {
-          throw new IssueRequestError('该地址不是有效的频道 Issue', 404)
-        }
-        const first = await service.getComments(owner, repo, numberValue, 1, abort.signal)
+        // Generic Issue reading must not depend on Channel configuration.
+        const loaded = await loadIssueContent(service, owner, repo, numberValue, abort.signal)
+        if (!loaded) throw new IssueRequestError('该地址不是有效的 GitHub Issue', 404)
+        const { issue, first } = loaded
         if (current !== revision.current || abort.signal.aborted) return
         setState({ key: routeKey, loading: false, issue, comments: uniqueComments(first.items),
           page: 1, hasMore: first.hasMore, fetchingMore: false,

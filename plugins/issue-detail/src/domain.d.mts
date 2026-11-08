@@ -7,7 +7,8 @@ export type GithubLabourComment = {
 }
 export type LabourRecord = LabourComment & { comment: GithubLabourComment; conflicted: boolean }
 export function parseIssueLabels(config: string): string[]
-export function validIssueForPage(issue: unknown, allowedLabels: string[]): boolean
+export function validIssueForPage(issue: unknown): boolean
+export function validChannelIssue(issue: unknown, allowedLabels: string[]): boolean
 export function validIssueTarget(owner: string | undefined, repo: string | undefined,
   number: string | undefined): boolean
 export function parseLabourComment(body: unknown): LabourComment | null

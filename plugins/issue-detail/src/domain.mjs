@@ -55,10 +55,15 @@ export function parseIssueLabels(config) {
   return [...new Set(values)]
 }
 
-/** @summary Accept Open and Closed Issues with exactly one configured channel label; reject PRs. */
-export function validIssueForPage(issue, allowedLabels) {
-  if (!issue || !Number.isSafeInteger(issue.number) || issue.number <= 0 ||
-      issue.pull_request || !['open', 'closed'].includes(issue.state)) return false
+/** @summary Accept real Open/Closed GitHub Issues regardless of labels or Channel config. */
+export function validIssueForPage(issue) {
+  return Boolean(issue && Number.isSafeInteger(issue.number) && issue.number > 0 &&
+    !issue.pull_request && ['open', 'closed'].includes(issue.state))
+}
+
+/** @summary Test configured Channel membership separately from generic Issue validity. */
+export function validChannelIssue(issue, allowedLabels) {
+  if (!validIssueForPage(issue) || !Array.isArray(allowedLabels)) return false
   const assigned = (Array.isArray(issue.labels) ? issue.labels : [])
     .map(item => typeof item === 'string' ? item : item?.name)
     .filter(item => typeof item === 'string' && item.toLowerCase().startsWith('channel:'))
