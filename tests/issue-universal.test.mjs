@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { validIssueForPage, validChannelIssue, summarizeIssueComments } from '../plugins/issue-detail/src/domain.mjs'
 import { loadIssueContent } from '../plugins/issue-detail/src/load-issue.mjs'
 
@@ -30,6 +31,15 @@ function fakeApi(value, options = {}) {
   }
   return { service, calls }
 }
+
+test('domain TypeScript declarations preserve separate Issue and Channel contracts', () => {
+  const declarations = readFileSync(new URL('../plugins/issue-detail/src/domain.d.mts',
+    import.meta.url), 'utf8')
+  assert.match(declarations,
+    /export function validIssueForPage\(issue: unknown\): boolean/)
+  assert.match(declarations,
+    /export function validChannelIssue\(issue: unknown, allowedLabels: string\[\]\): boolean/)
+})
 
 test('universal validity accepts ordinary, multiple-Channel and Open/Closed Issues', () => {
   for (const labels of [[], ['status:todo'], [{ name: 'channel:discussion' }],

@@ -10,8 +10,8 @@ const longLabour = '```yaml\nlabour:\n  work: |\n    修复 Issue 页面\n    �
   sha + '\n  outcome: |\n    可追溯结果\n  hr: ~1h\n```'
 const conflicting = '```yaml\nlabour:\n  work: 另一条引用同一 Commit\n  commits:\n    - ' +
   sha + '\n  hr: ~1.5h\n```'
-const comment = (id: number, body: string, owner = 'sample', repo = 'repo'): GithubComment => ({
-  id, body, html_url: 'https://github.com/' + owner + '/' + repo + '/issues/1#issuecomment-' + id,
+const comment = (id: number, body: string, owner: string, repo: string, number: number): GithubComment => ({
+  id, body, html_url: 'https://github.com/' + owner + '/' + repo + '/issues/' + number + '#issuecomment-' + id,
   created_at: '2026-11-01T00:00:00Z', user: { login: 'fixture-user' },
   extra_field: 'original GitHub comment data',
 })
@@ -21,11 +21,14 @@ function data(owner: string, repo: string, number: number): GithubComment[] {
   const key = owner + '/' + repo + '/' + number
   if (pages.has(key)) return pages.get(key)!
   const rows = number === 1 ? [
-    comment(101, '普通讨论内容'), comment(102, shortLabour),
-    comment(103, longLabour), comment(104, '```yaml\nlabour:\n  hr: ~1\n```'),
+    comment(101, '普通讨论内容', owner, repo, number),
+    comment(102, shortLabour, owner, repo, number),
+    comment(103, longLabour, owner, repo, number),
+    comment(104, '```yaml\nlabour:\n  hr: ~1\n```', owner, repo, number),
   ] : number === 9
-    ? Array.from({ length: 102 }, (_, i) => comment(1000 + i, '第 ' + (i + 1) + ' 条评论'))
-    : number === 10 ? [comment(201, longLabour), comment(202, conflicting)] : []
+    ? Array.from({ length: 102 }, (_, i) => comment(1000 + i, '第 ' + (i + 1) + ' 条评论', owner, repo, number))
+    : number === 10 ? [comment(201, longLabour, owner, repo, number),
+      comment(202, conflicting, owner, repo, number)] : []
   pages.set(key, rows)
   return rows
 }
@@ -51,7 +54,7 @@ export function createIssueFixtureService(loggedIn: boolean): IssueDetailApi {
         number, title: '受控 Issue #' + number,
         body: '这是一份完整的模拟 GitHub Issue 正文。',
         state: number === 2 ? 'closed' : 'open',
-        html_url: 'https://github.com/sample/repo/issues/' + number,
+        html_url: 'https://github.com/' + owner + '/' + repo + '/issues/' + number,
         labels: number === 12 ? []
           : number === 13 ? [{ name: 'channel:discussion' }, { name: 'channel:other' }]
           : [{ name: number === 4 ? 'status:todo' :
@@ -93,7 +96,8 @@ export function createIssueFixtureService(loggedIn: boolean): IssueDetailApi {
       await wait(signal)
       if (!loggedIn) throw new IssueRequestError('Fixture OAuth required', 401, true)
       if (body.includes('FAIL_POST')) throw new IssueRequestError('Fixture write rejected', 403)
-      const item = comment(9000 + data(owner, repo, number).length, body)
+      const item = comment(9000 + data(owner, repo, number).length, body,
+        owner, repo, number)
       data(owner, repo, number).push(item)
       return item
     },
