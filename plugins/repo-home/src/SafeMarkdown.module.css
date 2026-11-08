@@ -14,3 +14,10 @@
 .video{border:1px solid #d5dce6;border-radius:8px;padding:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .video a{margin-left:auto}
 .invalid{color:#8f3543;overflow-wrap:anywhere}
+
+/* Preview contains only a rendered Markdown prefix; no clipped, off-screen focus targets. */
+.preview .media img{max-height:120px;object-fit:contain;object-position:left}
+.preview .media{margin:8px 0}
+.preview .video{padding:9px 12px}
+.preview .paragraph{margin:6px 0}
+.preview pre{max-height:100px;overflow:auto}

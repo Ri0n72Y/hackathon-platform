@@ -91,3 +91,23 @@ export function summarizeReadme(markdown, repoName) {
   }
   return parts.join(' ').slice(0, 450)
 }
+
+/** @summary Build a token-boundary Markdown prefix so collapsed media and links remain renderable. */
+export function previewMarkdown(body, budget = 280) {
+  if (typeof body !== 'string' || !body) return ''
+  const tokens = body.match(/(!\[[^\]\n]*\]\([^\s)\n]+\)|@\[video\]\([^\s)\n]+\)|\[[^\]\n]+\]\([^\s)\n]+\)|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|\x60[^\x60\n]+\x60|\*[^*\n]+\*|_[^_\n]+_|[^\s!@\[\]*_~\x60]+|[ \t]+|\n+|.)/g) || []
+  const limit = Math.max(100, budget)
+  let result = '', used = 0
+  for (const token of tokens) {
+    // Media height consumes preview space even when its URL is only a few characters.
+    const cost = token.startsWith('![') && /^\!\[[^\]]*\]\(/.test(token) ? 115 :
+      token.startsWith('@[video](') ? 75 :
+      token.startsWith('\n') ? Math.max(14, token.length * 8) :
+      [...token].reduce((total, char) => total + (/[\u2e80-\uffff]/.test(char) ? 2 : 1), 0)
+    if (result.trim().length > 0 && used + cost > limit) break
+    result += token
+    used += cost
+  }
+  const truncated = result.length < body.length
+  return result.trimEnd() + (truncated ? '\n\n…' : '')
+}

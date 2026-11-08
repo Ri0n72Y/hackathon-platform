@@ -6,3 +6,4 @@ export function validLogin(value: unknown): boolean
 export function validateMemberInput(raw: unknown): Omit<Member,'id'>
 export function appendMemberFile(text: string | null, input: Omit<Member,'id'>, id: string): string
 export function summarizeReadme(markdown: string, repoName: string): string
+export function previewMarkdown(body: string, budget?: number): string
