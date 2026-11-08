@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { validateMemberInput } from './domain.mjs'
 import { readDisplayBranch, RepoHomeError, type MemberCapability, type MemberSubmitResult,
@@ -21,6 +21,7 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
   const [pending, setPending] = useState(false)
   const [result, setResult] = useState<MemberSubmitResult | null>(null)
   const [revision, setRevision] = useState(0)
+  const pendingController = useRef<AbortController | null>(null)
   useEffect(() => {
     const controller = new AbortController()
     setCapability(null); setAuthStatus(null); setError('')
@@ -31,7 +32,11 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
       setAuthStatus(e instanceof RepoHomeError ? e.status : 502)
       setError(e instanceof Error ? e.message : '权限验证失败')
     })
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      pendingController.current?.abort()
+      pendingController.current = null
+    }
   }, [api, owner, repo, branch, revision])
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -40,12 +45,20 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
     try { member = validateMemberInput(fields) }
     catch (e) { setError(e instanceof Error ? e.message : '资料无效'); return }
     const controller = new AbortController()
+    pendingController.current = controller
     setPending(true); setError(''); setResult(null)
-    try { setResult(await api.register(owner, repo, branch, member, controller.signal)) }
-    catch (e) {
-      setError(e instanceof Error ? e.message : '提交失败，请重试')
-      if (e instanceof RepoHomeError && e.status === 401) { setAuthStatus(401); setCapability(null) }
-    } finally { setPending(false) }
+    try {
+      const saved = await api.register(owner, repo, branch, member, controller.signal)
+      if (!controller.signal.aborted) setResult(saved)
+    } catch (e) {
+      if (!controller.signal.aborted) {
+        setError(e instanceof Error ? e.message : '提交失败，请重试')
+        if (e instanceof RepoHomeError && e.status === 401) { setAuthStatus(401); setCapability(null) }
+      }
+    } finally {
+      if (pendingController.current === controller) pendingController.current = null
+      if (!controller.signal.aborted) setPending(false)
+    }
   }
   const change = (key: keyof Omit<Fields,'links'>, value: string) =>
     setFields(old => ({ ...old, [key]: value }))

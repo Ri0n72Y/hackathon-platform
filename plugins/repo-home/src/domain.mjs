@@ -111,3 +111,8 @@ export function previewMarkdown(body, budget = 280) {
   const truncated = result.length < body.length
   return result.trimEnd() + (truncated ? '\n\n…' : '')
 }
+
+/** @summary Separate registration state by repository identity and selected display branch. */
+export function memberRegistrationScope(owner, repo, branch) {
+  return JSON.stringify([owner.toLowerCase(), repo.toLowerCase(), branch])
+}
