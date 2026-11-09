@@ -44,14 +44,16 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
   const [capability, setCapability] = useState<MemberCapability | null>(null)
   const [authStatus, setAuthStatus] = useState<number | null>(null)
   const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+  // After the first submit, diagnostics follow current field values.
+  const fieldErrors: FieldErrors = submitAttempted ? validateVisibleFields(fields) : {}
   const fieldRefs = useRef<Partial<Record<FieldKey, HTMLInputElement | HTMLTextAreaElement | null>>>({})
   const [pending, setPending] = useState(false)
   const [result, setResult] = useState<MemberSubmitResult | null>(null)
   const [revision, setRevision] = useState(0)
   const pendingController = useRef<AbortController | null>(null)
   useEffect(() => {
-    setFields(initial()); setFieldErrors({}); setResult(null); setPending(false); setError('')
+    setFields(initial()); setSubmitAttempted(false); setResult(null); setPending(false); setError('')
   }, [owner, repo, branch])
   useEffect(() => {
     const controller = new AbortController()
@@ -72,15 +74,14 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!capability || pending) return
-    const problems = validateVisibleFields(fields)
-    const first = Object.keys(problems)[0] as FieldKey | undefined
+    setSubmitAttempted(true)
+    const first = Object.keys(validateVisibleFields(fields))[0] as FieldKey | undefined
     if (first) {
-      setFieldErrors(problems)
-      setError('请修正标记的字段后重新提交。')
+      setError('')
       fieldRefs.current[first]?.focus()
       return
     }
-    setFieldErrors({})
+    setSubmitAttempted(false)
     let member
     try { member = validateMemberInput(fields) }
     catch (e) { setError(e instanceof Error ? e.message : '资料无效'); return }
@@ -100,22 +101,12 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
       if (!controller.signal.aborted) setPending(false)
     }
   }
-  function clearFieldError(key: FieldKey) {
-    setFieldErrors(previous => {
-      if (!previous[key]) return previous
-      const next = { ...previous }
-      delete next[key]
-      return next
-    })
-  }
   function change(key: keyof Omit<Fields, 'links'>, value: string) {
     setFields(previous => ({ ...previous, [key]: value }))
-    clearFieldError(key)
   }
   function changeLink(index: number, key: 'label' | 'url', value: string) {
     setFields(previous => ({ ...previous, links: previous.links.map((entry, i) =>
       i === index ? { ...entry, [key]: value } : entry) }))
-    clearFieldError(`links.${index}.${key}`)
   }
   return <section className={styles.page}>
     <p><Link to={base}>项目</Link> / <Link to={base + '/members'}>团队成员</Link> / 添加成员</p>
@@ -123,6 +114,8 @@ export default function MemberRegisterPage({ api }: { api: RepoHomeApi }) {
     <p className={styles.muted}>目标：{owner}/{repo} · 提交到 <strong>{branch}</strong></p>
     {authStatus === null && !capability && <p role="status">正在验证操作者和仓库写权限…</p>}
     {error && <p role="alert">{error}</p>}
+    {submitAttempted && Object.keys(fieldErrors).length > 0 &&
+      <p role="alert">请修正标记的字段后重新提交。</p>}
     {authStatus === 401 && <a href={login}>登录 GitHub 后返回此表单</a>}
     {authStatus !== null && authStatus !== 401 && <button type="button"
       onClick={() => setRevision(n => n + 1)}>重新检查权限</button>}

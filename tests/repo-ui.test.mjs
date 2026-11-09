@@ -36,6 +36,14 @@ test('#51 V1: safe Markdown exposes H1–H6 with distinct scoped level styles', 
   }
   assert.ok(styles.includes('font-size:1.65em'))
   assert.ok(styles.includes('font-size:1em'))
+  const article = renderToStaticMarkup(createElement(SafeMarkdown, { body: markdown, article: true }))
+  assert.match(article, /role="heading" aria-level="1"/)
+  assert.match(article, /class="[^"]*article/)
+  const cardCss = readFileSync(resolve(root, 'plugins/repo-home/src/RepoHome.module.css'), 'utf8')
+  const cardTitleSize = Number(cardCss.match(/\.card h3\{font-size:([\d.]+)px/)?.[1])
+  const bodySize = Number(styles.match(/\.markdown\{[^\n]*font-size:([\d.]+)px/)?.[1])
+  const articleSize = Number(styles.match(/\.article \.heading\[aria-level="1"\]\{font-size:([\d.]+)em/)?.[1])
+  assert.ok(bodySize * articleSize < cardTitleSize, 'Issue title should exceed article H1')
   assert.doesNotMatch(html, /<script|<iframe/)
 })
 
@@ -55,12 +63,31 @@ test('#51 V2: field errors point to name, avatar and the third personal link URL
   assert.deepEqual(validateVisibleFields(valid), {})
 })
 
+test('#51 V2: invalid URLs remain marked through edits, clear after valid input', () => {
+  const avatar = draft()
+  avatar.avatarUrl = 'http://example.com/old.png'
+  assert.match(validateVisibleFields(avatar).avatarUrl, /HTTPS/)
+  avatar.avatarUrl = 'http://example.com/new.png'
+  assert.match(validateVisibleFields(avatar).avatarUrl, /HTTPS/)
+  avatar.avatarUrl = 'https://example.com/new.png'
+  assert.equal(validateVisibleFields(avatar).avatarUrl, undefined)
+  const links = draft()
+  links.links[2] = { label: 'Website', url: 'javascript:alert(1)' }
+  assert.match(validateVisibleFields(links)['links.2.url'], /HTTPS/)
+  links.links[2].url = 'http://example.com'
+  assert.match(validateVisibleFields(links)['links.2.url'], /HTTPS/)
+  links.links[2].url = 'https://example.com'
+  assert.deepEqual(validateVisibleFields(links), {})
+})
+
 test('#51 V2: form keeps inline accessibility links and focuses first invalid input', () => {
   const src = readFileSync(resolve(root, 'plugins/repo-home/src/MemberRegisterPage.tsx'), 'utf8')
   assert.match(src, /fieldRefs\.current\[first\]\?\.focus\(\)/)
   assert.match(src, /aria-invalid=\{Boolean\(fieldErrors\.name\)\}/)
   assert.match(src, /aria-describedby=\{fieldErrors\.name/)
   assert.match(src, /aria-describedby=\{fieldErrors\[urlKey\]/)
-  assert.match(src, /setFields\(initial\(\)\); setFieldErrors\(\{\}\); setResult\(null\)/)
+  assert.match(src, /setFields\(initial\(\)\); setSubmitAttempted\(false\); setResult\(null\)/)
+  assert.match(src, /submitAttempted \? validateVisibleFields\(fields\) : \{\}/)
+  assert.doesNotMatch(src, /clearFieldError\(/)
   assert.match(src, /validateMemberInput\(fields\)/)
 })

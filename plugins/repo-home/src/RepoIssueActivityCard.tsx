@@ -29,7 +29,7 @@ export function RepoIssueActivityCard({ issue, base }: { issue: RepoFeedIssue; b
     <h3><Link to={base + '/issues/' + issue.number}>{issue.title}</Link></h3>
     {!body.trim() ? <p className={styles.muted}>此 Issue 暂无正文</p> :
       <SafeMarkdown body={long && !expanded ? previewMarkdown(body, mobile ? 160 : 300) : body}
-        preview={long && !expanded} />}
+        preview={long && !expanded} article />}
     {long && <button type="button" onClick={() => setExpanded(v => !v)}
       aria-expanded={expanded}>{expanded ? '收起正文' : '展开完整正文'}</button>}
     <div className={styles.cardActions}>

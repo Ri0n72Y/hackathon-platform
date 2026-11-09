@@ -62,3 +62,8 @@ Vercel 忽略 `api/_*.mjs` 独立 Function 构建，dispatcher 仍导入旧模�
 自动结果以 PR **最新 Head** 对应的 GitHub Actions 为准。
 
 **仍未验证：** 本地交互浏览器、真实 Vercel Preview 构建/HTTP 响应、production 部署、#51 八条流程 D4、OAuth/成员登记真实写入。V3（详情页 Markdown）、V4（跨页面 Token）和 V5（Popover）按 Designer 报告保留为后续设计/人工检查事项，本 PR 未扩大这三项的范围。#51 在实际人工验收前保持 Open。
+
+## Designer / Reviewer 后续 P2 局部修正
+
+- V1：Feed 第一条 Issue 卡片标题应高于正文 H1–H6；收起与展开均维持这一视觉关系，完整 README 则保留较大的 Markdown 标题。需实际观察桌面、320/375px、200% 缩放；自动测试不等于视觉实测。
+- V2：首次提交触发字段错误后，把头像 URL 从一个 HTTP 地址改成另一个 HTTP 地址，第三条链接也从脚本 URL 改成 HTTP 地址；字段错误继续显示，直到改成合法 HTTPS URL。所有字段有效后顶部提示应同步消失；不做真实 GitHub 写入。
