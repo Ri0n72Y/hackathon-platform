@@ -3,7 +3,13 @@
 .markdown pre{white-space:pre;overflow-x:auto;background:#f2f5f8;border-radius:8px;padding:12px}
 .markdown code{background:#edf1f4;padding:1px 3px;border-radius:4px}
 .markdown pre code{background:transparent}
-.heading{font-weight:700;margin:16px 0 8px;font-size:1.1em}
+.heading{font-weight:700;line-height:1.35;margin:16px 0 8px}
+.heading[aria-level="1"]{font-size:1.65em;margin-top:26px;margin-bottom:14px}
+.heading[aria-level="2"]{font-size:1.4em;margin-top:22px;margin-bottom:12px}
+.heading[aria-level="3"]{font-size:1.22em;margin-top:19px;margin-bottom:10px}
+.heading[aria-level="4"]{font-size:1.12em;margin-top:16px;margin-bottom:9px}
+.heading[aria-level="5"]{font-size:1.04em;margin-top:14px;margin-bottom:8px}
+.heading[aria-level="6"]{font-size:1em;margin-top:12px;margin-bottom:8px}
 .paragraph{margin:10px 0;white-space:pre-wrap}
 .markdown blockquote{border-left:3px solid #b7c4d4;padding:2px 12px;margin:12px 0;color:#46546c}
 .markdown ul,.markdown ol{padding-left:24px}
