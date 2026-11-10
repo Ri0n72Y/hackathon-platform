@@ -59,7 +59,9 @@ function Paragraph({ source }: { source: string }) {
   return <div className={styles.paragraph}>{pieces}</div>
 }
 /** @summary Render a deliberately small safe Markdown subset for the original Issue body. */
-export function SafeMarkdown({ body, preview = false }: { body: string; preview?: boolean }) {
+export function SafeMarkdown({ body, preview = false, article = false }: {
+  body: string; preview?: boolean; article?: boolean
+}) {
   const lines = body.replace(/\r\n?/g, '\n').split('\n')
   const blocks: ReactNode[] = []
   for (let i = 0; i < lines.length;) {
@@ -105,5 +107,6 @@ export function SafeMarkdown({ body, preview = false }: { body: string; preview?
       !/^(?:#{1,6}\s|>\s?|[-*+]\s|\d+\.\s|\x60{3,}|~{3,})/.test(lines[i].trim())) para.push(lines[i++].trim())
     blocks.push(<Paragraph key={blocks.length} source={para.join(' ')} />)
   }
-  return <div className={preview ? `${styles.markdown} ${styles.preview}` : styles.markdown}>{blocks}</div>
+  const className = [styles.markdown, preview && styles.preview, article && styles.article].filter(Boolean).join(' ')
+  return <div className={className}>{blocks}</div>
 }

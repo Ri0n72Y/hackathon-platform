@@ -4,6 +4,38 @@
     {
       "source": "/((?!api(?:/|$)|assets(?:/|$)|installation-probe\\.html$|favicon\\.ico$|robots\\.txt$).*)",
       "destination": "/index.html"
+    },
+    {
+      "source": "/api/issue-detail",
+      "destination": "/api/issue-read?__lc_route=issue-detail"
+    },
+    {
+      "source": "/api/issue-comments",
+      "destination": "/api/issue-read?__lc_route=issue-comments"
+    },
+    {
+      "source": "/api/issue-config",
+      "destination": "/api/issue-read?__lc_route=issue-config"
+    },
+    {
+      "source": "/api/repo-home",
+      "destination": "/api/repo-access?__lc_route=repo-home"
+    },
+    {
+      "source": "/api/repo-feed",
+      "destination": "/api/repo-access?__lc_route=repo-feed"
+    },
+    {
+      "source": "/api/repo-member-permission",
+      "destination": "/api/repo-access?__lc_route=repo-member-permission"
+    },
+    {
+      "source": "/api/repo-member-register",
+      "destination": "/api/repo-access?__lc_route=repo-member-register"
+    },
+    {
+      "source": "/api/github-installation-probe",
+      "destination": "/api/repo-access?__lc_route=github-installation-probe"
     }
   ]
 }

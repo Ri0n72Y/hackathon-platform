@@ -6,6 +6,7 @@ const sampleIssue = (n: number): RepoFeedIssue => ({
   updated_at: new Date(Date.UTC(2026, 9, 31, 0, 0, 0) - n * 1000).toISOString(),
   user: { login: 'octocat' },
   body: n === 1 ? '# Markdown 测试\n文字 **加粗** 与 [外链](https://github.com)\n\n' +
+    '## 二级标题\n\n### 三级标题\n\n#### 四级标题\n\n##### 五级标题\n\n###### 六级标题\n\n' +
     '![图像](https://github.com/favicon.ico)\n\n@[video](https://www.youtube.com/watch?v=sample)\n\n' +
     Array(20).fill('长正文内容').join('。') : '演示正文：' + n,
 })

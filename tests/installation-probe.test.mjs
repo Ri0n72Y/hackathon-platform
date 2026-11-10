@@ -1,4 +1,6 @@
 import './repo-home.test.mjs'
+import './repo-ui.test.mjs'
+import './api-routing.test.mjs'
 import './issue-api.test.mjs'
 import './issue-domain.test.mjs'
 import './issue-universal.test.mjs'
