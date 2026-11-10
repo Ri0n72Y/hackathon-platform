@@ -58,12 +58,13 @@ export function parseConfigNamespaces(text) {
       if (!root) throw Error('Missing namespaces root')
       if (depth === 2) {
         if (block && entries.length === 0) throw Error('Null list is not an empty list')
-        const index = line.indexOf(':')
-        const name = line.slice(0, index).toLowerCase()
-        if (index < 1 || !NAMESPACE.test(name) || namespaces.has(name)) {
-          throw Error('Invalid or repeated namespace')
-        }
-        const tail = line.slice(index + 1).trim()
+        // In YAML block mappings, ':' must be followed by separation whitespace
+        // (or end of line). "foo:[]" is a scalar, never an empty managed list.
+        const mapping = /^([a-z][a-z0-9._-]{0,49}):(?: +(.+))?$/i.exec(line)
+        if (!mapping) throw Error('Invalid YAML namespace mapping')
+        const name = mapping[1].toLowerCase()
+        if (namespaces.has(name)) throw Error('Repeated namespace')
+        const tail = mapping[2]?.trim() ?? ''
         entries = []
         namespaces.set(name, entries)
         current = name

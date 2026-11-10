@@ -89,6 +89,32 @@ test('#47 malformed, ambiguous or unsupported YAML fails closed', () => {
   assert.equal(parseConfigNamespaces('x'.repeat(300000)).state, 'invalid_config')
 })
 
+test('#47 B1: block mapping rejects missing separation after namespace colon', () => {
+  for (const source of [
+    'namespaces:\n  foo:[]\n',
+    'namespaces:\n  foo:[bar]\n',
+    'namespaces:\n  foo:[bar, baz]\n',
+    'namespaces:\n  foo:[]\n  status: [todo]\n',
+    'namespaces:\n  status: [todo]\n  foo:[]\n',
+    'namespaces:\n  foo:\u00a0[]\n',
+  ]) {
+    const parsed = parseConfigNamespaces(source)
+    assert.equal(parsed.state, 'invalid_config', source)
+    const plan = planLabelChanges(parsed, [{ name: 'foo:obsolete' }],
+      [issue(1, ['foo:obsolete'])], { complete: true })
+    assert.equal(plan.hasChanges, false)
+    assert.deepEqual(plan.removeIssueLabels, [])
+  }
+  const accepted = parseConfigNamespaces('namespaces:\n  foo: []\n')
+  assert.equal(accepted.state, 'ready')
+  assert.deepEqual(accepted.namespaces.foo, [])
+  assert.deepEqual(planLabelChanges(accepted, [{ name: 'foo:obsolete' }],
+    [issue(1, ['foo:obsolete'])], { complete: true }).removeIssueLabels,
+  [{ number: 1, labels: ['foo:obsolete'] }])
+  assert.deepEqual(parseConfigNamespaces('namespaces:\n  foo: [bar]\n').namespaces.foo,
+    ['foo:bar'])
+})
+
 test('#47 full namespace-prefix matching never touches foobar or unmanaged tags; PRs excluded', () => {
   const parsed = parseConfigNamespaces(CONFIG)
   const labels = ['status:todo', 'foo:unused', 'foobar:legacy'].map(name => ({ name }))
@@ -181,6 +207,30 @@ test('#47 corrupted file and invalid YAML never enumerate issues/labels or apply
       accessFactory: mock.accessFactory, read: mock.read })
     assert.equal(result.state, 'invalid_config')
     assert.equal(result.plan, null)
+    assert.ok(!mock.calls.some(path => path.includes('/labels?') || path.includes('/issues?')))
+  }
+})
+
+test('#47 B1: malformed mapping cannot trigger Label/Issue enumeration or diff', async () => {
+  for (const configText of [
+    'namespaces:\n  foo:[]\n',
+    'namespaces:\n  foo:[bar]\n',
+    'namespaces:\n  status: [todo]\n  foo:[]\n',
+  ]) {
+    const mock = mockRead({
+      configText,
+      labelPages: [[{ name: 'foo:obsolete' }]],
+      issuePages: [[issue(1, ['foo:obsolete'])]],
+    })
+    const preview = await readRepoConfigPreview({
+      owner: 'octocat', repo: 'demo',
+      accessFactory: mock.accessFactory, read: mock.read,
+    })
+    assert.equal(preview.state, 'invalid_config', configText)
+    assert.equal(preview.config.state, 'invalid_config')
+    assert.equal(preview.plan, null)
+    assert.equal(preview.canApply, false)
+    assert.ok(mock.calls.some(path => path.includes('/contents/labourchain.config.yaml')))
     assert.ok(!mock.calls.some(path => path.includes('/labels?') || path.includes('/issues?')))
   }
 })
