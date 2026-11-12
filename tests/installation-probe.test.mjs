@@ -1,5 +1,7 @@
 import './repo-home.test.mjs'
 import './config-preview.test.mjs'
+import './config-api.test.mjs'
+import './config-route.test.mjs'
 import './repo-ui.test.mjs'
 import './api-routing.test.mjs'
 import './issue-api.test.mjs'
