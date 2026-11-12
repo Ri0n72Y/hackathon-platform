@@ -17,8 +17,8 @@ const EMPTY_REPORT: ReportState = {
 }
 function asError(value: unknown, stage = 'source'): TopicPageError {
   if (value instanceof Error) return Object.assign(value,
-    { stage: (value as TopicPageError).stage || stage })
-  return Object.assign(new Error('TopicPage 读取失败'), { stage, status: 502 })
+    { stage: (value as TopicPageError).stage || stage, observedAt: new Date().toISOString() })
+  return Object.assign(new Error('TopicPage 读取失败'), { stage, status: 502, observedAt: new Date().toISOString() })
 }
 
 /** @summary Load Topic source and filter consecutive Search pages until 10 eligible projects or termination. */
@@ -41,7 +41,7 @@ export default function TopicPageContainer({ owner, repo, api }: {
     if (!validTopicRepository(owner, repo)) {
       setState({ snapshot: null, projects: [], loading: false,
         error: Object.assign(new Error('TopicPage URL 仓库参数无效'),
-          { stage: 'route', status: 400 }), windowExhausted: false })
+          { stage: 'route', status: 400, observedAt: new Date().toISOString() }), windowExhausted: false })
       return () => abort.abort()
     }
     void (async () => {

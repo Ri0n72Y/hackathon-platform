@@ -15,7 +15,7 @@ export default function TopicStatus({ loading, error, windowExhausted, count,
     {error && <section className={styles.error} role="alert">
       <h2>TopicPage 读取失败</h2>
       <p>{error.message}{error.status ? '（HTTP ' + error.status + '）' : ''}</p>
-      <p className={styles.note}>阶段：{error.stage || 'source'}。可以重试读取；
+      <p className={styles.note}>阶段：{error.stage || 'source'}。{error.observedAt && '请求时间：' + error.observedAt + '。'}可以重试读取；
         失败或限流期间无法确认候选列表已全部读取。</p>
       <div className={styles.errorActions}>
         <button type="button" onClick={onRetry}>重新加载</button>

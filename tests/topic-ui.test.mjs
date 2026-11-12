@@ -62,7 +62,7 @@ test('#31 Search window exhaustion renders an explicit non-terminal warning', ()
 
 test('#31 report failure is visible inside dialog, retains the submitted draft', () => {
   const html = render({ error: Object.assign(new Error('README fetch failed'),
-    { stage: 'readme', status: 502 }), canReport: true, writeEnabled: true,
+    { stage: 'readme', status: 502, observedAt: '2026-11-12T12:55:00Z' }), canReport: true, writeEnabled: true,
     report: { open: true, title: 'My draft', body: 'Keep this body',
       message: 'Fixture 403 permission denied', pending: false, url: '' } })
   const dialog = html.slice(html.indexOf('role="dialog"'))
@@ -70,6 +70,7 @@ test('#31 report failure is visible inside dialog, retains the submitted draft',
   assert.match(dialog, /Keep this body/)
   assert.match(dialog, /role="alert"/)
   assert.match(dialog, /Fixture 403 permission denied/)
+  assert.match(html, /请求时间：2026-11-12T12:55:00Z/)
   assert.match(dialog, /确认提交 Issue/)
 })
 

@@ -14,7 +14,7 @@ export type TopicProjectsPage = {
   page: number; perPage: number; totalCount: number;
   hasNext: boolean; windowExhausted: boolean; items: TopicRepository[]
 }
-export type TopicPageError = Error & { stage?: string; status?: number; retryable?: boolean }
+export type TopicPageError = Error & { stage?: string; status?: number; retryable?: boolean; observedAt?: string }
 export type ReportIssue = { title: string; body: string }
 export interface TopicPageApi {
   readonly reportAvailable: boolean
