@@ -109,7 +109,8 @@ export default function TopicPageContainer({ owner, repo, api }: {
   }
   function openReport() {
     if (!authenticated || !state.error) return
-    const stage = state.error.stage || 'source'
+    const issueError = state.error
+    const stage = issueError.stage || 'source'
     setReport(prev => ({
       open: true, pending: false, checking: true,
       uncertain: prev.uncertain, proof: '', url: prev.url,
@@ -119,8 +120,8 @@ export default function TopicPageContainer({ owner, repo, api }: {
         '[TopicPage] ' + stage + ' 失败：' + owner + '/' + repo,
       body: prev.uncertain ? prev.body :
         '页面：/topic/' + owner + '/' + repo + '\n阶段：' + stage +
-        '\nHTTP：' + (state.error?.status || 'unknown') +
-        '\n说明：' + state.error.message.slice(0, 600) +
+        '\nHTTP：' + (issueError.status || 'unknown') +
+        '\n说明：' + issueError.message.slice(0, 600) +
         '\n时间：' + new Date().toISOString(),
     }))
     void checkReportTarget()
