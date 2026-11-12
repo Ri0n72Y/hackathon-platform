@@ -52,7 +52,7 @@ export class TopicPageService implements TopicPageApi {
     const data = await this.read<{ authenticated?: boolean }>('/api/github-session', signal)
     return data.authenticated === true
   }
-  async submitReport(_route: TopicRoute, _report: ReportIssue, _signal: AbortSignal) {
+  async submitReport(_route: TopicRoute, _report: ReportIssue, _signal: AbortSignal): Promise<string> {
     // The old #35 write endpoint bypasses current main's installation/CSRF policy.
     // No browser-side fallback or Bot credentials are permitted before explicit review.
     throw Object.assign(new Error('站内创建错误 Issue 的授权链路尚待审批；请复制草稿在 GitHub 手动提交'), {
