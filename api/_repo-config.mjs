@@ -389,9 +389,18 @@ async function saveConfig({ body, token, fetcher, resolve }) {
       }
       saved = { commitSha: reconciled.headSha, fileSha: reconciled.fileSha }
     }
-    const written = await readCurrentConfig({
-      owner: body.owner, repo: body.repo, token, fetcher, branch,
-    })
+    let written
+    try {
+      written = await readCurrentConfig({
+        owner: body.owner, repo: body.repo, token, fetcher, branch,
+      })
+    } catch (error) {
+      return { state: 'partial_failure',
+        error: '维护分支 Config 已提交，但结果复核失败；请重新读取后人工核实：' + error.message,
+        branchUrl, commitSha: saved.commitSha, fileSha: saved.fileSha,
+        failed: [{ kind: 'verify_branch', error: error.message,
+          retryAfter: error.retryAfter || null }], requiresRefresh: true }
+    }
     if (written.state !== 'ready' || written.fileSha !== saved.fileSha ||
         normalizedText(written.content) !== content) {
       return { state: 'partial_failure', error: '维护分支 Config 写入后复核不一致',
@@ -451,9 +460,18 @@ async function saveConfig({ body, token, fetcher, resolve }) {
     deny(error.message + '；请重新读取 main，禁止盲目重复提交', error.status || 502,
       error.status === 409 || error.status === 422 ? 'stale_preview' : 'partial_failure')
   }
-  const verified = await readCurrentConfig({
-    owner: body.owner, repo: body.repo, token, fetcher, branch: 'main',
-  })
+  let verified
+  try {
+    verified = await readCurrentConfig({
+      owner: body.owner, repo: body.repo, token, fetcher, branch: 'main',
+    })
+  } catch (error) {
+    return { state: 'partial_failure',
+      error: 'main Config Commit 已返回，但结果复核失败；请重新读取后人工核实：' + error.message,
+      commitSha: saved.commitSha, fileSha: saved.fileSha,
+      failed: [{ kind: 'verify_main_commit', error: error.message,
+        retryAfter: error.retryAfter || null }], requiresRefresh: true }
+  }
   if (verified.state !== 'ready' || verified.fileSha !== saved.fileSha ||
       normalizedText(verified.content) !== content) {
     return { state: 'partial_failure', error: 'Commit 已返回，但 main 当前 Config 与提交内容不一致；请重新读取',
@@ -476,6 +494,43 @@ async function verifyMainUnchanged({ owner, repo, token, fetcher, headSha, fileS
   const current = await readCurrentConfig({ owner, repo, token, fetcher, branch: 'main' })
   return (current.state === 'ready' || current.state === 'config_missing') &&
     current.headSha === headSha && current.fileSha === fileSha
+}
+
+/**
+ * @summary Preserve successful writes and the unprocessed plan when the authoritative
+ * main/Config verification is stale, rate limited or unavailable.
+ */
+async function verifyMainAfterWrites({
+  owner, repo, token, fetcher, preview, createdLabels, removedAssociations,
+  pending, stage,
+}) {
+  let unchanged
+  try {
+    unchanged = await verifyMainUnchanged({
+      owner, repo, token, fetcher,
+      headSha: preview.headSha, fileSha: preview.fileSha,
+    })
+  } catch (error) {
+    return {
+      state: 'partial_failure', createdLabels: [...createdLabels],
+      removedAssociations: [...removedAssociations],
+      failed: [{ kind: 'verify_main', stage, error: error.message,
+        retryAfter: error.retryAfter || null }],
+      pending, requiresRefresh: true,
+      error: 'main/Config 复核读取失败；部分写入已完成，必须重新读取后人工重算',
+    }
+  }
+  if (!unchanged) {
+    return {
+      state: 'partial_failure', createdLabels: [...createdLabels],
+      removedAssociations: [...removedAssociations],
+      failed: [{ kind: 'stale_main', stage,
+        error: 'main 或 Config 在同步过程中发生变化' }],
+      pending, requiresRefresh: true,
+      error: 'main/Config 已变化；停止后续写入，请重新读取后人工重算',
+    }
+  }
+  return null
 }
 
 async function reconcileLabel({ owner, repo, token, fetcher, name }) {
@@ -569,14 +624,12 @@ async function syncLabels({ body, token, fetcher, resolve, accessFactory }) {
     }
   }
 
-  if (!(await verifyMainUnchanged({
-    owner: body.owner, repo: body.repo, token, fetcher,
-    headSha: preview.headSha, fileSha: preview.fileSha,
-  }))) {
-    return { state: 'partial_failure', createdLabels, removedAssociations,
-      failed: [{ kind: 'stale_main', error: 'main 或 Config 在 Label 创建后发生变化' }],
-      pending: plan.removeIssueLabels }
-  }
+  const afterCreation = await verifyMainAfterWrites({
+    owner: body.owner, repo: body.repo, token, fetcher, preview,
+    createdLabels, removedAssociations, pending: plan.removeIssueLabels,
+    stage: 'after_label_creation',
+  })
+  if (afterCreation) return afterCreation
 
   let processed = 0
   for (const group of plan.removeIssueLabels) {
@@ -612,13 +665,14 @@ async function syncLabels({ body, token, fetcher, resolve, accessFactory }) {
           failed, pending: plan.removeIssueLabels.slice(plan.removeIssueLabels.indexOf(group)) }
       }
       processed++
-      if (processed % 10 === 0 && !(await verifyMainUnchanged({
-        owner: body.owner, repo: body.repo, token, fetcher,
-        headSha: preview.headSha, fileSha: preview.fileSha,
-      }))) {
-        failed.push({ kind: 'stale_main', error: 'main 或 Config 在同步过程中发生变化' })
-        return { state: 'partial_failure', createdLabels, removedAssociations,
-          failed, pending: plan.removeIssueLabels.slice(plan.removeIssueLabels.indexOf(group)) }
+      if (processed % 10 === 0) {
+        const afterBatch = await verifyMainAfterWrites({
+          owner: body.owner, repo: body.repo, token, fetcher, preview,
+          createdLabels, removedAssociations,
+          pending: plan.removeIssueLabels.slice(plan.removeIssueLabels.indexOf(group)),
+          stage: 'after_issue_batch',
+        })
+        if (afterBatch) return afterBatch
       }
     }
   }

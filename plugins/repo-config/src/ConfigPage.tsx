@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useParams } from 'react-router'
 import { parseConfigNamespaces } from './domain.mjs'
 import type { ConfigActionResult, ConfigSnapshot, RepoConfigApi } from './service'
 import { RepoConfigError } from './service'
 import ConfigView from './ConfigView'
 
 /** @summary Own Config requests, validation, confirmations and state transitions; the View only renders props. */
-export default function ConfigPage({ api }: { api: RepoConfigApi }) {
-  const { owner = '', repo = '' } = useParams<'owner' | 'repo'>()
+export default function ConfigPage({ api, owner, repo }: {
+  api: RepoConfigApi
+  owner: string
+  repo: string
+}) {
   const base = '/' + encodeURIComponent(owner) + '/' + encodeURIComponent(repo)
   const login = '/api/github-login?return_to=' + encodeURIComponent(base + '/config')
   const [snapshot, setSnapshot] = useState<ConfigSnapshot | null>(null)
@@ -20,6 +22,13 @@ export default function ConfigPage({ api }: { api: RepoConfigApi }) {
   const [revision, setRevision] = useState(0)
   const active = useRef<AbortController | null>(null)
   const pendingPr = useRef<{ url: string; content: string } | null>(null)
+
+  useEffect(() => () => {
+    // Route-key remount discards stale state. Abort save/sync as well as load:
+    // the load effect cleanup alone may not own the current controller.
+    active.current?.abort()
+    active.current = null
+  }, [])
 
   const load = useCallback(async (signal: AbortSignal) => {
     setLoading(true)
