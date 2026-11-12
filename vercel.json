@@ -40,6 +40,10 @@
     {
       "source": "/api/repo-config",
       "destination": "/api/repo-access?__lc_route=repo-config"
+    },
+    {
+      "source": "/api/repo-channels",
+      "destination": "/api/repo-access?__lc_route=repo-channels"
     }
   ]
 }

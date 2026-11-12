@@ -5,6 +5,7 @@ import { repoPanel } from '../../../plugins/repo-panel/src/index'
 import { repoHome, createRepoHomePlugin } from '../../../plugins/repo-home/src/index'
 import { repoConfig, createRepoConfigPlugin } from '../../../plugins/repo-config/src/index'
 import { createIssueDetailPlugin } from '../../../plugins/issue-detail/src/index'
+import { channel, createChannelPlugin } from '../../../plugins/channel/src/index'
 
 /** @summary Assemble ordinary routes or independently test Repo Home and Config with controlled fixtures. */
 export async function startRuntime() {
@@ -15,25 +16,43 @@ export async function startRuntime() {
     const uiFiber = ctx.plugin(ReactUIService)
     fibers.push(uiFiber); await uiFiber
     const query = new URLSearchParams(window.location.search)
+    const channelFixture = query.get('channelFixture') === '1'
     const isolated = query.get('repoOnly') === '1' || query.get('repoFixture') === '1' ||
-      query.get('configFixture') === '1'
+      query.get('configFixture') === '1' || channelFixture
     if (!isolated) {
       const issuesFiber = ctx.plugin(RepoIssuesService)
       fibers.push(issuesFiber); await issuesFiber
       const panelFiber = ctx.plugin(repoPanel)
       fibers.push(panelFiber); await panelFiber
     }
-    const homePlugin = query.get('repoFixture') === '1'
-      ? createRepoHomePlugin((await import('./repo-fixture')).createRepoFixtureService(query))
-      : repoHome
-    const homeFiber = ctx.plugin(homePlugin)
-    fibers.push(homeFiber); await homeFiber
+    if (!channelFixture) {
+      const homePlugin = query.get('repoFixture') === '1'
+        ? createRepoHomePlugin((await import('./repo-fixture')).createRepoFixtureService(query))
+        : repoHome
+      const homeFiber = ctx.plugin(homePlugin)
+      fibers.push(homeFiber); await homeFiber
 
-    const configPlugin = query.get('configFixture') === '1'
-      ? createRepoConfigPlugin((await import('./config-fixture')).createRepoConfigFixtureService(query))
-      : repoConfig
-    const configFiber = ctx.plugin(configPlugin)
-    fibers.push(configFiber); await configFiber
+      const configPlugin = query.get('configFixture') === '1'
+        ? createRepoConfigPlugin((await import('./config-fixture')).createRepoConfigFixtureService(query))
+        : repoConfig
+      const configFiber = ctx.plugin(configPlugin)
+      fibers.push(configFiber); await configFiber
+    }
+
+    const channelPlugin = channelFixture
+      ? createChannelPlugin((await import('./channel-fixture')).createChannelFixtureService(query))
+      : channel
+    const channelFiber = ctx.plugin(channelPlugin)
+    fibers.push(channelFiber); await channelFiber
+
+    if (channelFixture) {
+      // Independent Channel fixture uses the existing Issue-detail implementation
+      // to display only the selected Issue's comments and Labour Record summary.
+      const { createIssueFixtureService } = await import('./issue-fixture')
+      const detailFiber = ctx.plugin(createIssueDetailPlugin(
+        createIssueFixtureService(query.get('fixtureAuth') === '1')))
+      fibers.push(detailFiber); await detailFiber
+    }
 
     if (!isolated) {
       if (query.get('issueFixture') === '1') {

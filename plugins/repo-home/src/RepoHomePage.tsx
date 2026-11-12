@@ -122,6 +122,7 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
         {readmeUrl && <a href={readmeUrl} target="_blank" rel="noopener noreferrer">完整 README</a>}
         <a href={data.repository.html_url} target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
         <Link to={base + '/config'}>仓库配置与 Labels</Link>
+        <Link to={base + '/channels'}>项目频道</Link>
       </div>
       {data.readme.state === 'error' && <p role="status">README 读取失败：{data.readme.error} <button type="button" onClick={() => setGeneration(n => n + 1)}>重试</button></p>}
       <form className={styles.branch} onSubmit={e => { e.preventDefault(); if (draft.trim()) setBranch(draft.trim()) }}>
