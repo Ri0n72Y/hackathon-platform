@@ -11,9 +11,10 @@ export type TopicPageViewProps = {
   projects: TopicRepository[]; loading: boolean;
   error: TopicPageError | null; windowExhausted: boolean;
   report: { open: boolean; title: string; body: string; pending: boolean;
-    message: string; url: string };
+    checking: boolean; uncertain: boolean; message: string; url: string };
   writeEnabled: boolean; canReport: boolean;
   onRetry(): void; onOpenReport(): void; onCloseReport(): void;
+  onConfirmUnknown(): void;
   onReportTitleChange(value: string): void; onReportBodyChange(value: string): void;
   onSubmitReport(event: FormEvent<HTMLFormElement>): void;
 }
@@ -34,7 +35,9 @@ export default function TopicPageView(props: TopicPageViewProps) {
         windowExhausted={props.windowExhausted} count={props.projects.length}
         onRetry={props.onRetry}
         onReport={props.canReport ? props.onOpenReport : undefined}
-        reportUrl={props.report.url}/>
+        reportUrl={props.report.url}
+        loginUrl={'/api/github-login?return_to=' + encodeURIComponent(
+          '/topic/' + props.owner + '/' + props.repo)}/>
       {!props.loading && !props.error && props.projects.length === 0 &&
         <div className={styles.empty}>当前可访问搜索范围没有符合配置的项目。</div>}
       {props.projects.length > 0 && <div className={styles.grid}>
@@ -44,9 +47,11 @@ export default function TopicPageView(props: TopicPageViewProps) {
     </section>
     {props.report.open && <TopicReportDialog
       title={props.report.title} body={props.report.body}
-      pending={props.report.pending} message={props.report.message}
+      pending={props.report.pending} checking={props.report.checking}
+      uncertain={props.report.uncertain} message={props.report.message}
       writeEnabled={props.writeEnabled} githubNewIssueUrl={base}
       onTitleChange={props.onReportTitleChange} onBodyChange={props.onReportBodyChange}
-      onCancel={props.onCloseReport} onSubmit={props.onSubmitReport}/>}
+      onCancel={props.onCloseReport} onConfirmUnknown={props.onConfirmUnknown}
+      onSubmit={props.onSubmitReport}/>}
   </div>
 }

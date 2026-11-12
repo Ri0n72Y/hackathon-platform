@@ -62,10 +62,24 @@ export function createTopicFixtureService(query: URLSearchParams): TopicPageApi 
       }
     },
     async getSession(signal) { await wait(signal); return authenticated },
-    async submitReport(_route: TopicRoute, _report: ReportIssue, signal) {
-      await wait(signal)
+    async getReportTarget(route: TopicRoute, signal: AbortSignal) {
+      await wait(signal); routeCheck(route)
+      if (!authenticated) throw Object.assign(new Error('Fixture: 请先登录'), {
+        status: 401, stage: 'permission',
+      })
+      return 'fixture-target-proof'
+    },
+    async submitReport(route: TopicRoute, _report: ReportIssue,
+      proof: string, signal: AbortSignal) {
+      await wait(signal); routeCheck(route)
+      if (!authenticated || proof !== 'fixture-target-proof') throw Object.assign(
+        new Error('Fixture: 权限或目标凭证不足'), { status: 403, stage: 'report' })
       if (mode === 'report-fail') throw Object.assign(
         new Error('Fixture 403：提交失败，请检查仓库权限'), { status: 403, stage: 'report' })
+      if (mode === 'report-unknown') throw Object.assign(
+        new Error('Fixture：响应中断，先去 GitHub 核查'), {
+          status: 502, stage: 'report', outcomeUnknown: true,
+        })
       return 'https://github.com/sample/repo/issues/77'
     },
   }

@@ -52,6 +52,10 @@
     {
       "source": "/api/topic-projects",
       "destination": "/api/repo-access?__lc_route=topic-projects"
+    },
+    {
+      "source": "/api/topic-report",
+      "destination": "/api/repo-access?__lc_route=topic-report"
     }
   ]
 }

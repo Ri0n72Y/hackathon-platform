@@ -24,7 +24,7 @@ function render(options = {}) {
     projects: options.projects || [], loading: options.loading || false,
     error: options.error || null, windowExhausted: options.windowExhausted || false,
     report: options.report || { open: false, title: '', body: '',
-      message: '', pending: false, url: '' },
+      message: '', pending: false, checking: false, uncertain: false, url: '' },
     canReport: options.canReport || false, writeEnabled: options.writeEnabled || false,
     onRetry() {}, onOpenReport() {}, onCloseReport() {},
     onReportTitleChange() {}, onReportBodyChange() {}, onSubmitReport() {},
@@ -64,7 +64,8 @@ test('#31 report failure is visible inside dialog, retains the submitted draft',
   const html = render({ error: Object.assign(new Error('README fetch failed'),
     { stage: 'readme', status: 502, observedAt: '2026-11-12T12:55:00Z' }), canReport: true, writeEnabled: true,
     report: { open: true, title: 'My draft', body: 'Keep this body',
-      message: 'Fixture 403 permission denied', pending: false, url: '' } })
+      message: 'Fixture 403 permission denied', pending: false,
+      checking: false, uncertain: false, url: '' } })
   const dialog = html.slice(html.indexOf('role="dialog"'))
   assert.match(dialog, /My draft/)
   assert.match(dialog, /Keep this body/)
@@ -74,11 +75,11 @@ test('#31 report failure is visible inside dialog, retains the submitted draft',
   assert.match(dialog, /确认提交 Issue/)
 })
 
-test('#31 production report write stays disabled with manual GitHub handoff', () => {
+test('#31 unverified report permission keeps submit disabled with manual GitHub handoff', () => {
   const html = render({ canReport: true,
     report: { open: true, title: 'Draft', body: 'Details',
       message: '', pending: false, url: '' } })
-  assert.match(html, /自动提交关闭|自动写入仓库/)
+  assert.match(html, /当前不能确认写入权限/)
   assert.match(html, /disabled=""/)
   assert.match(html, /href="https:\/\/github.com\/sample\/repo\/issues\/new"/)
 })
@@ -102,8 +103,9 @@ test('#31 isolated fixture exercises whitelist, multi-page, 1000-window, retry a
     { status: 429 })
   const report = factory(new URLSearchParams({ topicCase: 'report-fail', fixtureAuth: '1' }))
   assert.equal(await report.getSession(signal()), true)
+  const proof = await report.getReportTarget({ owner: 'sample', repo: 'repo' }, signal())
   await assert.rejects(() => report.submitReport({ owner: 'sample', repo: 'repo' },
-    { title: 'Draft', body: 'Keep it' }, signal()), { status: 403 })
+    { title: 'Draft', body: 'Keep it' }, proof, signal()), { status: 403 })
 })
 
 test('#31 route remount, abort and separate plugin fixture wiring remain in main Runtime', () => {
@@ -117,4 +119,18 @@ test('#31 route remount, abort and separate plugin fixture wiring remain in main
   for (const name of ['repoHome', 'repoConfig', 'channelPlugin', 'createIssueDetailPlugin'])
     assert.ok(runtime.includes(name))
   assert.match(runtime, /topicFixture/)
+})
+
+
+test('#31 OAuth report unknown result forces a deliberate confirmation button, preserves draft', () => {
+  const html = render({ error: Object.assign(new Error('API failed'),
+    { stage: 'source', status: 503 }), canReport: true, writeEnabled: false,
+    report: { open: true, pending: false, checking: false, uncertain: true,
+      title: 'Keep this title', body: 'Keep this report',
+      message: '创建结果未知，请先核查', url: '' } })
+  assert.match(html, /我已在 GitHub 核查，允许再次提交/)
+  assert.match(html, /Keep this title/)
+  assert.match(html, /Keep this report/)
+  assert.match(html, /disabled=""/)
+  assert.match(html, /创建结果未知，请先核查/)
 })
