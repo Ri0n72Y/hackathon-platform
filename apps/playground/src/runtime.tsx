@@ -27,7 +27,8 @@ export async function startRuntime() {
       const panelFiber = ctx.plugin(repoPanel)
       fibers.push(panelFiber); await panelFiber
     }
-    if (!channelFixture && !topicFixture) {
+    if (!topicFixture) {
+      if (!channelFixture) {
       const homePlugin = query.get('repoFixture') === '1'
         ? createRepoHomePlugin((await import('./repo-fixture')).createRepoFixtureService(query))
         : repoHome
@@ -39,6 +40,7 @@ export async function startRuntime() {
         : repoConfig
       const configFiber = ctx.plugin(configPlugin)
       fibers.push(configFiber); await configFiber
+      }
     }
 
     const topicPlugin = topicFixture
