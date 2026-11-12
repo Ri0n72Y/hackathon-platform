@@ -322,20 +322,10 @@ async function saveConfig({ body, token, fetcher, resolve }) {
   const base = pathFor(body.owner, body.repo)
   if (capability.protectedBranch) {
     const branch = 'labourchain/config-' + randomUUID()
-    let branchRules
-    try {
-      branchRules = await readBranchRules({
-        owner: body.owner, repo: body.repo, branch, token, fetcher,
-      })
-    } catch (error) {
-      if (error.status === 429 || error.status === 401) throw error
-      deny('无法验证维护分支的有效 Rulesets；为避免绕过保护，已停止写入',
-        error.status || 502, 'protection_unknown')
-    }
-    if (branchRules.some(rule => rule.type === 'pull_request')) {
-      deny('维护分支也受 Pull Request 规则保护，无法安全直接写入；请调整分支规则后重试',
-        409, 'protection_unknown')
-    }
+    const branchUrl = 'https://github.com/' + body.owner + '/' + body.repo +
+      '/tree/' + branch
+    // GitHub can only report effective branch rules after the new ref exists.
+    // Ref creation never writes Config content. Check the newly created ref before PUT.
     try {
       await githubRequest(fetcher, token, base + '/git/refs', {
         method: 'POST',
@@ -347,12 +337,38 @@ async function saveConfig({ body, token, fetcher, resolve }) {
         const existing = await githubRequest(fetcher, token,
           base + '/git/ref/heads/' + encodeURIComponent(branch), {}, true)
         if (existing?.data?.object?.sha !== current.headSha) {
-          return { state: 'partial_failure', error: error.message,
-            branchUrl: 'https://github.com/' + body.owner + '/' + body.repo + '/tree/' + branch }
+          return { state: 'partial_failure', error: error.message, branchUrl }
         }
       } catch {
-        return { state: 'partial_failure', error: error.message }
+        return { state: 'partial_failure', error: error.message, branchUrl }
       }
+    }
+
+    let branchRules
+    try {
+      branchRules = await readBranchRules({
+        owner: body.owner, repo: body.repo, branch, token, fetcher,
+      })
+    } catch (error) {
+      return { state: 'partial_failure', error: '维护分支已创建，但无法核验有效 Rulesets；' +
+        '没有修改 Config：' + error.message, branchUrl }
+    }
+    if (branchRules.some(rule => rule.type === 'pull_request')) {
+      return { state: 'partial_failure', error: '维护分支也受 Pull Request 规则保护；' +
+        '没有修改 Config', branchUrl }
+    }
+    let latestMain
+    try {
+      latestMain = await readCurrentConfig({
+        owner: body.owner, repo: body.repo, token, fetcher, branch: 'main',
+      })
+    } catch (error) {
+      return { state: 'partial_failure', error: '维护分支已创建，但 main 重读失败：' +
+        error.message, branchUrl }
+    }
+    if (!comparePreview(body, latestMain)) {
+      return { state: 'partial_failure', error: '维护分支已创建，但 main/Config 已变化；' +
+        '没有修改 Config，请重新预览', branchUrl }
     }
 
     let saved

@@ -73,7 +73,11 @@ function mockFetcher(options = {}) {
       if (value) return value()
     }
     if (path === BASE) return respond(200, { private: false, full_name: OWNER + '/' + REPO })
-    if (path.startsWith(BASE + '/rules/branches/')) return respond(200, [])
+    if (path.startsWith(BASE + '/rules/branches/')) {
+      const name = path.slice((BASE + '/rules/branches/').length)
+      return branches.has(name) && !options.newBranchRulesUnavailable ?
+        respond(200, []) : respond(404, {})
+    }
     if (path === BASE + '/branches/main') {
       return respond(200, { name: 'main', protected: options.protected !== false,
         commit: { sha: mainHead } })
@@ -291,4 +295,68 @@ test('Label sync without destructive confirmation performs no writes', async () 
   assert.equal(response.status, 400)
   assert.equal(data.state, 'confirmation_required')
   assert.ok(!mock.calls.some(call => call.method !== 'GET'))
+})
+
+
+test('protected Config refuses a missing maintenance Ruleset after creating a ref, without PUT', async () => {
+  const mock = mockFetcher({ newBranchRulesUnavailable: true })
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'save_config', branch: 'main',
+    content: NEXT_CONFIG, expectedHeadSha: HEAD, expectedFileSha: FILE_SHA,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher, resolveInstalledRepository: resolve, writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  const result = await response.json()
+  assert.equal(response.status, 200)
+  assert.equal(result.state, 'partial_failure')
+  assert.match(result.error, /Rulesets/)
+  assert.ok(result.branchUrl.includes('/tree/labourchain/config-'))
+  const created = mock.calls.find(call => call.path === BASE + '/git/refs' && call.method === 'POST')
+  const inspected = mock.calls.find(call => call.path.startsWith(BASE +
+    '/rules/branches/labourchain/config-'))
+  assert.ok(created)
+  assert.ok(inspected)
+  assert.ok(mock.calls.indexOf(created) < mock.calls.indexOf(inspected))
+  assert.equal(mock.calls.filter(call => call.method === 'PUT').length, 0)
+})
+
+test('Config save rejects stale main SHA before creating a branch or Contents PUT', async () => {
+  const mock = mockFetcher()
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'save_config', branch: 'main',
+    content: NEXT_CONFIG, expectedHeadSha: '0'.repeat(40),
+    expectedFileSha: FILE_SHA,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher, resolveInstalledRepository: resolve, writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  assert.equal(response.status, 409)
+  assert.equal((await response.json()).state, 'stale_preview')
+  assert.equal(mock.calls.filter(call => call.method !== 'GET').length, 0)
+})
+
+test('Config save rejects App permission gaps without Bot fallback or GitHub mutation', async () => {
+  const mock = mockFetcher({
+    appPermissions: { contents: 'read', issues: 'write', pull_requests: 'write' },
+  })
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'save_config', branch: 'main',
+    content: NEXT_CONFIG, expectedHeadSha: HEAD, expectedFileSha: FILE_SHA,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher, resolveInstalledRepository: resolve, writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  assert.equal(response.status, 403)
+  assert.equal((await response.json()).state, 'app_permission_missing')
+  assert.equal(mock.calls.filter(call => call.method !== 'GET').length, 0)
 })
