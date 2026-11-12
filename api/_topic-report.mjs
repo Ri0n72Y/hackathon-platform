@@ -21,8 +21,9 @@ function validationError(message, status = 400) {
 }
 function githubFailure(response, stage) {
   const code = response.status
-  const limited = code === 429 || code === 403 &&
-    response.headers.get('x-ratelimit-remaining') === '0'
+  const limited = code === 429 || code === 403 && (
+    response.headers.get('x-ratelimit-remaining') === '0' ||
+    response.headers.has('retry-after'))
   const retryAfter = response.headers.get('retry-after')
   const errors = {
     401: 'GitHub 用户授权已过期，请重新登录',
@@ -34,7 +35,7 @@ function githubFailure(response, stage) {
   const message = limited ? 'GitHub 请求受限流控制，请稍后重试' :
     errors[code] || 'GitHub ' + stage + ' HTTP ' + code
   return reply({ state: 'rejected', stage, error: message,
-    outcomeUnknown: code >= 500,
+    outcomeUnknown: stage === 'create_issue' && code >= 500,
     ...(retryAfter && /^\d{1,6}$/.test(retryAfter) ? { retryAfter } : {}),
   }, limited ? 429 : [401, 403, 404, 410, 422].includes(code) ? code : 502)
 }
@@ -107,13 +108,15 @@ export function createTopicReportEndpoint({
       }
       if (request.method === 'POST') {
         if (request.headers.get('origin') !== config.origin ||
-            request.headers.get('x-labourchain-write') !== '1' ||
-            !/^application\/json(?:\s*;|$)/i.test(
-              request.headers.get('content-type') || '')) {
-          return validationError('写入需要同源 JSON 请求和明确确认标记', 403)
+            request.headers.get('x-labourchain-write') !== '1') {
+          return validationError('写入需要同源请求和明确确认标记', 403)
+        }
+        if (!/^application\/json(?:\s*;|$)/i.test(
+          request.headers.get('content-type') || '')) {
+          return validationError('Only application/json is accepted', 415)
         }
         const length = Number(request.headers.get('content-length') || 0)
-        if (!Number.isFinite(length) || length > MAX_BYTES) {
+        if (!Number.isFinite(length) || length < 0 || length > MAX_BYTES) {
           return validationError('请求内容过长', 413)
         }
       }
@@ -143,7 +146,7 @@ export function createTopicReportEndpoint({
         }
         target = data
         if (data.confirmed !== true || typeof data.title !== 'string' ||
-            !data.title.trim() || data.title.length > 256 ||
+            !data.title.trim() || data.title.length > 256 || /[\r\n]/.test(data.title) ||
             typeof data.body !== 'string' || !data.body.trim() ||
             data.body.length > 20000 || typeof data.proof !== 'string') {
           return validationError('请先确认报告，并提供有效标题、正文与目标凭证', 400)

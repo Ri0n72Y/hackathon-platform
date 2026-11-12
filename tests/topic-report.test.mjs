@@ -115,7 +115,7 @@ test('#31 CSRF guards require same-origin URL, Origin, write header, JSON and ex
     [{ body: '' }, {}],
   ]) {
     const res = await s.submit(data.proof, payload, headers)
-    assert.ok([400, 403].includes(res.status), 'CSRF/confirmation must fail')
+    assert.ok([400, 403, 415].includes(res.status), 'CSRF/confirmation must fail')
   }
   assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
 })
@@ -149,6 +149,7 @@ test('#31 repo/user permission HTTP failures are distinct from create failure', 
     const s = setup({ repoStatus: status })
     const pre = await s.preflight()
     assert.equal(pre.response.status, status >= 500 ? 502 : status)
+    assert.notEqual(pre.data.outcomeUnknown, true, 'GET cannot create an Issue')
     assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
   }
 })
@@ -200,4 +201,16 @@ test('#31 cannot accept methods other than GET preflight or POST write', async (
   const res = await s.endpoint.fetch(new Request(api, { method: 'PUT' }))
   assert.equal(res.status, 405)
   assert.equal(s.calls.length, 0)
+})
+
+
+test('#31 secondary GitHub 403 with Retry-After is surfaced as 429 without write retry', async () => {
+  const s = setup({ writeStatus: 403, writeHeaders: { 'retry-after': '45' } })
+  const { data } = await s.preflight()
+  const res = await s.submit(data.proof)
+  assert.equal(res.status, 429)
+  const body = await res.json()
+  assert.equal(body.retryAfter, '45')
+  assert.equal(body.outcomeUnknown, false)
+  assert.equal(s.calls.filter(call => call.method === 'POST').length, 1)
 })

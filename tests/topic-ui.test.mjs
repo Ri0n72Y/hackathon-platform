@@ -80,6 +80,7 @@ test('#31 unverified report permission keeps submit disabled with manual GitHub 
     report: { open: true, title: 'Draft', body: 'Details',
       message: '', pending: false, url: '' } })
   assert.match(html, /当前不能确认写入权限/)
+  assert.match(html, /重新登录 GitHub/)
   assert.match(html, /disabled=""/)
   assert.match(html, /href="https:\/\/github.com\/sample\/repo\/issues\/new"/)
 })

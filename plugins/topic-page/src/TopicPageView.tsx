@@ -23,6 +23,8 @@ export type TopicPageViewProps = {
 export default function TopicPageView(props: TopicPageViewProps) {
   const base = 'https://github.com/' + encodeURIComponent(props.owner) + '/' +
     encodeURIComponent(props.repo) + '/issues/new'
+  const login = '/api/github-login?return_to=' + encodeURIComponent(
+    '/topic/' + props.owner + '/' + props.repo)
   return <div className={styles.page}>
     {props.snapshot && <TopicPageHead snapshot={props.snapshot}/>}
     <section className={styles.section} aria-labelledby="topic-projects-heading">
@@ -36,8 +38,7 @@ export default function TopicPageView(props: TopicPageViewProps) {
         onRetry={props.onRetry}
         onReport={props.canReport ? props.onOpenReport : undefined}
         reportUrl={props.report.url}
-        loginUrl={'/api/github-login?return_to=' + encodeURIComponent(
-          '/topic/' + props.owner + '/' + props.repo)}/>
+        loginUrl={login}/>
       {!props.loading && !props.error && props.projects.length === 0 &&
         <div className={styles.empty}>当前可访问搜索范围没有符合配置的项目。</div>}
       {props.projects.length > 0 && <div className={styles.grid}>
@@ -49,7 +50,7 @@ export default function TopicPageView(props: TopicPageViewProps) {
       title={props.report.title} body={props.report.body}
       pending={props.report.pending} checking={props.report.checking}
       uncertain={props.report.uncertain} message={props.report.message}
-      writeEnabled={props.writeEnabled} githubNewIssueUrl={base}
+      writeEnabled={props.writeEnabled} githubNewIssueUrl={base} loginUrl={login}
       onTitleChange={props.onReportTitleChange} onBodyChange={props.onReportBodyChange}
       onCancel={props.onCloseReport} onConfirmUnknown={props.onConfirmUnknown}
       onSubmit={props.onSubmitReport}/>}

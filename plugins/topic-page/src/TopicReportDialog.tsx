@@ -4,7 +4,7 @@ import styles from './topic-page.module.css'
 export type TopicReportDialogProps = {
   title: string; body: string; pending: boolean; checking: boolean;
   uncertain: boolean; message: string;
-  writeEnabled: boolean; githubNewIssueUrl: string;
+  writeEnabled: boolean; githubNewIssueUrl: string; loginUrl: string;
   onTitleChange(value: string): void; onBodyChange(value: string): void;
   onCancel(): void; onConfirmUnknown(): void;
   onSubmit(event: FormEvent<HTMLFormElement>): void;
@@ -45,6 +45,8 @@ export default function TopicReportDialog(props: TopicReportDialogProps) {
           <button type="submit" disabled={props.pending || !props.writeEnabled}>
             {props.pending ? '提交中…' : '确认提交 Issue'}
           </button>
+          {!props.writeEnabled && !props.checking && !props.uncertain &&
+            <a href={props.loginUrl}>重新登录 GitHub</a>}
           <a href={props.githubNewIssueUrl} target="_blank" rel="noopener noreferrer">
             在 GitHub 手动提交
           </a>
