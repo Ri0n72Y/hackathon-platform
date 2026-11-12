@@ -44,13 +44,16 @@ export function createTopicFixtureService(query: URLSearchParams): TopicPageApi 
       if (mode === 'rate-limit' && page === 2) throw Object.assign(
         new Error('Fixture rate-limited'), { status: 429, stage: 'topic-search' })
       if (mode === 'window') return {
-        page, perPage: 30, totalCount: 1500, hasNext: false, windowExhausted: true,
-        items: [project('member/project-1')],
+        page, perPage: 100, totalCount: 1500,
+        hasNext: page < 10, windowExhausted: page === 10,
+        items: Array.from({ length: 100 }, (_, i) =>
+          project(page === 1 && i === 0 ? 'member/project-1' :
+            'outside/candidate-' + page + '-' + i)),
       }
-      if (mode === 'empty') return { page, perPage: 30, totalCount: 0,
+      if (mode === 'empty') return { page, perPage: 100, totalCount: 0,
         hasNext: false, windowExhausted: false, items: [] }
       return {
-        page, perPage: 30, totalCount: 60, hasNext: page < 2,
+        page, perPage: 100, totalCount: 200, hasNext: page < 2,
         windowExhausted: false,
         items: page === 1 ? [
           project('other/blocked'), project('member/project-1'),

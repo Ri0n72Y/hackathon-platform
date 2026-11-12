@@ -12,15 +12,15 @@ export function createTopicProjectsEndpoint({ fetcher = fetch } = {}) {
         await publicRepository(owner, repo, args)
         const config = await topicConfig(owner, repo, args)
         const data = await github('/search/repositories?q=topic:' +
-          encodeURIComponent(config.topic) + '&sort=updated&order=desc&per_page=30&page=' +
+          encodeURIComponent(config.topic) + '&sort=updated&order=desc&per_page=100&page=' +
           page, { ...args, stage: 'topic-search' })
         if (!data || !Number.isSafeInteger(data.total_count) || data.total_count < 0 ||
             !Array.isArray(data.items)) throw new TopicFetchError(
           'GitHub Topic Search 响应无效', 502, 'topic-search')
         const accessible = Math.min(data.total_count, 1000)
-        const hasNext = page * 30 < accessible
+        const hasNext = page * 100 < accessible
         return reply({
-          page, perPage: 30, totalCount: data.total_count, hasNext,
+          page, perPage: 100, totalCount: data.total_count, hasNext,
           windowExhausted: data.total_count > 1000 && !hasNext,
           items: data.items.filter(item =>
             item && typeof item.full_name === 'string' && typeof item.name === 'string' &&

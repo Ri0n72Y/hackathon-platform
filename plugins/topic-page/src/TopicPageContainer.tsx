@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { validTopicRepository, accumulateTopicProjects } from './domain.mjs'
+import { validTopicRepository, loadTopicProjectCandidates } from './domain.mjs'
 import type { TopicPageApi, TopicRoute, TopicPageError, TopicRepository,
   TopicSnapshot } from './service'
 import TopicPageView from './TopicPageView'
@@ -51,22 +51,12 @@ export default function TopicPageContainer({ owner, repo, api }: {
         meta = await api.getSnapshot(route, abort.signal)
         if (abort.signal.aborted) return
         setState(prev => ({ ...prev, snapshot: meta }))
-        const pages = []
-        for (let page = 1; page <= 34 && !abort.signal.aborted; page++) {
-          const found = await api.getProjects(route, page, abort.signal)
-          if (abort.signal.aborted) return
-          if (found.page !== page || !Array.isArray(found.items) ||
-              (found.hasNext && page === 34)) throw Object.assign(
-            new Error('GitHub Search 分页响应不一致'), { stage: 'topic-search', status: 502 })
-          pages.push(found)
-          const summary = accumulateTopicProjects(meta, pages)
-          projects = summary.items as TopicRepository[]
-          if (summary.ended || projects.length >= 10) {
-            setState({ snapshot: meta, projects, loading: false,
-              error: null, windowExhausted: summary.windowExhausted })
-            return
-          }
-        }
+        const result = await loadTopicProjectCandidates(meta, page =>
+          api.getProjects(route, page, abort.signal), abort.signal)
+        if (abort.signal.aborted) return
+        projects = result.items as TopicRepository[]
+        setState({ snapshot: meta, projects, loading: false,
+          error: null, windowExhausted: result.windowExhausted })
       } catch (error) {
         if (!abort.signal.aborted) setState({
           snapshot: meta, projects, loading: false,

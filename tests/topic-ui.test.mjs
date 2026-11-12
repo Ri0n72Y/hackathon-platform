@@ -95,7 +95,8 @@ test('#31 isolated fixture exercises whitelist, multi-page, 1000-window, retry a
   const empty = factory(new URLSearchParams({ topicCase: 'empty' }))
   assert.deepEqual((await empty.getProjects({ owner: 'sample', repo: 'repo' }, 1, signal())).items, [])
   const window = factory(new URLSearchParams({ topicCase: 'window' }))
-  assert.equal((await window.getProjects({ owner: 'sample', repo: 'repo' }, 1, signal())).windowExhausted,true)
+  assert.equal((await window.getProjects({ owner: 'sample', repo: 'repo' }, 1, signal())).windowExhausted,false)
+  assert.equal((await window.getProjects({ owner: 'sample', repo: 'repo' }, 10, signal())).windowExhausted,true)
   const fail = factory(new URLSearchParams({ topicCase: 'rate-limit' }))
   await assert.rejects(() => fail.getProjects({ owner: 'sample', repo: 'repo' }, 2, signal()),
     { status: 429 })

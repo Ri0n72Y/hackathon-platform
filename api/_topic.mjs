@@ -16,7 +16,7 @@ export function requireTopicTarget(request, page = false) {
     'TopicPage 路由的仓库参数无效', 400, 'route')
   if (!page) return { owner, repo }
   const raw = search.get('page') || '1'
-  if (!/^[1-9]\d*$/.test(raw) || +raw > 34) throw new TopicFetchError(
+  if (!/^[1-9]\d*$/.test(raw) || +raw > 10) throw new TopicFetchError(
     'GitHub Topic Search 仅支持 1000 条可访问结果', 400, 'topic-search')
   return { owner, repo, page: Number(raw) }
 }

@@ -97,3 +97,28 @@ export function accumulateTopicProjects(meta, pages, minimum = 10) {
   return { items, ended, windowExhausted }
 }
 export const topicTargetKey = (owner, repo) => JSON.stringify([owner, repo])
+
+
+/** @summary Fetch at most ten real GitHub Search pages and report partial search windows honestly. */
+export async function loadTopicProjectCandidates(meta, getPage, signal, minimum = 10) {
+  const pages = []
+  for (let page = 1; page <= 10; page++) {
+    if (signal?.aborted) throw new Error('Topic query aborted')
+    const response = await getPage(page)
+    if (signal?.aborted) throw new Error('Topic query aborted')
+    if (!response || response.page !== page || response.perPage !== 100 ||
+        !Array.isArray(response.items) ||
+        (response.hasNext && page === 10) ||
+        (response.windowExhausted && response.hasNext)) {
+      throw Object.assign(new Error('GitHub Search 分页响应不一致'),
+        { stage: 'topic-search', status: 502 })
+    }
+    pages.push(response)
+    const summary = accumulateTopicProjects(meta, pages, minimum)
+    if (summary.ended || summary.items.length >= minimum) {
+      return { ...summary, pagesRead: page }
+    }
+  }
+  throw Object.assign(new Error('GitHub Search 分页超出安全读取上限'),
+    { stage: 'topic-search', status: 502 })
+}

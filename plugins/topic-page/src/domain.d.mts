@@ -15,3 +15,14 @@ export function accumulateTopicProjects(meta: {
   ended: boolean; windowExhausted: boolean
 }
 export function topicTargetKey(owner: string, repo: string): string
+
+export function loadTopicProjectCandidates(meta: {
+  repository: { full_name: string }; config: { whitelist: boolean };
+  allowedRepositories: string[]
+}, getPage: (page: number) => Promise<{
+  page: number; perPage: number; hasNext: boolean; windowExhausted: boolean;
+  items: Array<{ full_name: string; html_url: string }>
+}>, signal?: AbortSignal, minimum?: number): Promise<{
+  items: Array<{ full_name: string; html_url: string }>
+  ended: boolean; windowExhausted: boolean; pagesRead: number
+}>
