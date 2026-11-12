@@ -62,7 +62,6 @@ export function createRepoConfigFixtureService(query: URLSearchParams): RepoConf
     async save(_owner, _repo, next, _head, _file, signal): Promise<ConfigActionResult> {
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
       if (mode === 'denied') throw new RepoConfigError('模拟：当前用户没有仓库写权限', 403, 'user_permission_missing')
-      content = next
       if (mode === 'pr') return {
         state: 'awaiting_pr_merge',
         prUrl: 'https://github.com/octocat/Hello-World/pull/88',
@@ -70,6 +69,7 @@ export function createRepoConfigFixtureService(query: URLSearchParams): RepoConf
         branch: 'labourchain/config-fixture',
         commitSha: 'd'.repeat(40),
       }
+      content = next
       return { state: 'sync_pending', commitSha: 'd'.repeat(40), fileSha: 'e'.repeat(40) }
     },
     async sync(_owner, _repo, _previewId, confirmed, signal): Promise<ConfigActionResult> {
