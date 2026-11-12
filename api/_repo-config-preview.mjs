@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { issueReadAccess, IssueAccessError } from './_issue-access.mjs'
 import { paramsFor, pathFor, readRepo } from './_repo-home-access.mjs'
 import { parseConfigNamespaces, planLabelChanges } from '../plugins/repo-config/src/domain.mjs'
@@ -5,7 +6,8 @@ import { parseConfigNamespaces, planLabelChanges } from '../plugins/repo-config/
 const NEXT = /<[^>]+>;\s*rel="next"/
 const SHA = /^[a-f0-9]{40}$/i
 
-function parseFile(data) {
+/** @summary Decode only a complete, bounded UTF-8 GitHub Contents response. */
+export function decodeConfigFile(data) {
   if (data?.type !== 'file' || data.encoding !== 'base64' || typeof data.content !== 'string' ||
     !Number.isSafeInteger(data.size) || data.size < 0 || data.size > 256 * 1024 ||
     typeof data.sha !== 'string' || !SHA.test(data.sha)) return null
@@ -31,15 +33,27 @@ async function readPages(access, base, query, read, maxPages) {
   return { items: [], complete: false }
 }
 
+function snapshotId(headSha, fileSha, labels, issues) {
+  const relevantLabels = labels.map(item => String(item?.name || '').toLowerCase()).sort()
+  const relevantIssues = issues.map(issue => ({
+    number: issue.number,
+    state: issue.state,
+    isPullRequest: issue.pull_request != null,
+    labels: (Array.isArray(issue.labels) ? issue.labels : [])
+      .map(item => String(item?.name || '').toLowerCase()).sort(),
+  })).sort((a, b) => a.number - b.number)
+  const value = JSON.stringify({ headSha, fileSha, labels: relevantLabels, issues: relevantIssues })
+  return createHash('sha256').update(value).digest('hex')
+}
+
 /**
  * @summary Read public, installed repository Config and complete Label/Issue snapshots.
- * Pure preview only: no branch pointer persistence, repository mutation or public API entry.
+ * This helper is read-only; the write handler must independently re-read before every mutation.
  */
 export async function readRepoConfigPreview({
   owner, repo, syncBranch = 'main', maxPages = 10,
   accessFactory = issueReadAccess, read = readRepo,
 }) {
-  // Validate all target fields with the existing Repo/Home branch and repository rules.
   const url = new URL('https://preview.local/')
   url.searchParams.set('owner', owner)
   url.searchParams.set('repo', repo)
@@ -50,7 +64,6 @@ export async function readRepoConfigPreview({
   }
   const branch = target.branch
   const base = pathFor(owner, repo)
-  // In production this reuses the existing dynamic GitHub App installation/public-repo gate.
   const access = await accessFactory({ owner, repo })
   const metadata = await read(access, base)
   if (metadata?.data?.private !== false ||
@@ -72,28 +85,31 @@ export async function readRepoConfigPreview({
     encodeURIComponent(branch), true)
   const fileSha = source?.data?.sha || null
   if (!source) return {
-    state: 'config_missing', branch, headSha, fileSha: null, canApply: false,
-    config: parseConfigNamespaces(null), plan: null,
+    state: 'config_missing', branch, headSha, fileSha: null, configText: null,
+    canApply: false, config: parseConfigNamespaces(null), plan: null,
   }
-  const text = parseFile(source.data)
-  const config = parseConfigNamespaces(text === null ? '' : text)
+  const configText = decodeConfigFile(source.data)
+  const config = parseConfigNamespaces(configText === null ? '' : configText)
   if (config.state !== 'ready') return {
-    state: 'invalid_config', branch, headSha, fileSha, config, plan: null, canApply: false,
+    state: 'invalid_config', branch, headSha, fileSha, configText, config,
+    plan: null, canApply: false,
   }
 
   const labels = await readPages(access, base + '/labels', '', read, maxPages)
   if (!labels.complete) return {
-    state: 'snapshot_incomplete', branch, headSha, fileSha, config, plan: null, canApply: false,
+    state: 'snapshot_incomplete', branch, headSha, fileSha, configText,
+    config, plan: null, canApply: false,
   }
   const issues = await readPages(access, base + '/issues', '?state=all', read, maxPages)
   if (!issues.complete) return {
-    state: 'snapshot_incomplete', branch, headSha, fileSha, config, plan: null, canApply: false,
+    state: 'snapshot_incomplete', branch, headSha, fileSha, configText,
+    config, plan: null, canApply: false,
   }
   const plan = planLabelChanges(config, labels.items, issues.items, { complete: true })
   return {
-    state: plan.state, branch, headSha, fileSha, config,
+    state: plan.state, branch, headSha, fileSha, configText,
+    snapshotId: snapshotId(headSha, fileSha, labels.items, issues.items),
     counts: { labels: labels.items.length, issueObjects: issues.items.length },
     plan, canApply: false,
-    // A later approved write path MUST re-read the branch HEAD and all affected resources.
   }
 }

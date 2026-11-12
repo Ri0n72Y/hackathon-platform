@@ -3,9 +3,10 @@ import { ReactUIService } from '../../../plugins/react-ui/src/index'
 import { RepoIssuesService } from '../../../plugins/repo-issues/src/index'
 import { repoPanel } from '../../../plugins/repo-panel/src/index'
 import { repoHome, createRepoHomePlugin } from '../../../plugins/repo-home/src/index'
+import { repoConfig, createRepoConfigPlugin } from '../../../plugins/repo-config/src/index'
 import { createIssueDetailPlugin } from '../../../plugins/issue-detail/src/index'
 
-/** @summary Assemble ordinary business routes or just Repo Home with controlled fixture dependencies. */
+/** @summary Assemble ordinary routes or independently test Repo Home and Config with controlled fixtures. */
 export async function startRuntime() {
   const ctx = new Context()
   const fibers: Array<{ dispose(): Promise<void> }> = []
@@ -14,7 +15,8 @@ export async function startRuntime() {
     const uiFiber = ctx.plugin(ReactUIService)
     fibers.push(uiFiber); await uiFiber
     const query = new URLSearchParams(window.location.search)
-    const isolated = query.get('repoOnly') === '1' || query.get('repoFixture') === '1'
+    const isolated = query.get('repoOnly') === '1' || query.get('repoFixture') === '1' ||
+      query.get('configFixture') === '1'
     if (!isolated) {
       const issuesFiber = ctx.plugin(RepoIssuesService)
       fibers.push(issuesFiber); await issuesFiber
@@ -26,6 +28,12 @@ export async function startRuntime() {
       : repoHome
     const homeFiber = ctx.plugin(homePlugin)
     fibers.push(homeFiber); await homeFiber
+
+    const configPlugin = query.get('configFixture') === '1'
+      ? createRepoConfigPlugin((await import('./config-fixture')).createRepoConfigFixtureService(query))
+      : repoConfig
+    const configFiber = ctx.plugin(configPlugin)
+    fibers.push(configFiber); await configFiber
 
     if (!isolated) {
       if (query.get('issueFixture') === '1') {

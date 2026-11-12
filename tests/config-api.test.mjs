@@ -1,0 +1,294 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { createRepoConfigHandler } from '../api/_repo-config.mjs'
+import { readRepoConfigPreview } from '../api/_repo-config-preview.mjs'
+
+const OWNER = 'octocat'
+const REPO = 'demo'
+const BASE = '/repos/' + OWNER + '/' + REPO
+const HEAD = 'a'.repeat(40)
+const FILE_SHA = 'b'.repeat(40)
+const COMMIT_SHA = 'c'.repeat(40)
+const NEW_FILE_SHA = 'd'.repeat(40)
+const CONFIG = 'namespaces:\n  status:\n    - todo\n  foo: []\n'
+const NEXT_CONFIG = 'namespaces:\n  status:\n    - todo\n    - done\n  foo: []\n'
+const respond = (status, data, headers = {}) => new Response(
+  data == null ? null : JSON.stringify(data),
+  { status, headers: { 'content-type': 'application/json', ...headers } },
+)
+const file = (content, sha = FILE_SHA) => ({
+  type: 'file', encoding: 'base64', path: 'labourchain.config.yaml',
+  content: Buffer.from(content, 'utf8').toString('base64'),
+  size: Buffer.byteLength(content), sha,
+})
+const issue = (labels = ['foo:old']) => ({
+  number: 1, state: 'open', labels: labels.map(name => ({ name })),
+})
+
+function installed() {
+  return { installationId: 17, repositoryId: 10, jwt: 'app-jwt' }
+}
+function actorEntries(options = {}) {
+  return {
+    '/user': () => respond(200, { id: 7, login: 'fixture-operator' }),
+    '/user/installations/17/repositories': () => respond(200, {
+      repositories: [{
+        full_name: OWNER + '/' + REPO, private: false,
+        permissions: options.userPermissions || {
+          pull: true, triage: true, push: true, maintain: false, admin: false,
+        },
+      }],
+    }),
+    '/app/installations/17': () => respond(200, {
+      id: 17,
+      permissions: options.appPermissions || {
+        contents: 'write', issues: 'write', pull_requests: 'write',
+      },
+    }),
+    [BASE + '/branches/main']: () => respond(200, {
+      name: 'main', protected: options.protected !== false, commit: { sha: HEAD },
+    }),
+    [BASE + '/rules/branches/main']: () => respond(200, options.mainRules || []),
+  }
+}
+
+function mockFetcher(options = {}) {
+  const calls = []
+  let mainContent = options.content === undefined ? CONFIG : options.content
+  let mainFileSha = options.fileSha || FILE_SHA
+  let mainHead = HEAD
+  let labels = options.labels || [{ name: 'foo:old' }]
+  let currentIssue = options.issue || issue()
+  const branches = new Map()
+  const fetcher = async (url, init = {}) => {
+    const parsed = new URL(url)
+    const path = decodeURIComponent(parsed.pathname)
+    const method = (init.method || 'GET').toUpperCase()
+    const authorization = init.headers?.Authorization
+    calls.push({ path, method, authorization, body: init.body || null })
+    if (path === '/user' || path.startsWith('/user/installations/') ||
+        path === '/app/installations/17' || path === BASE + '/branches/main' ||
+        path === BASE + '/rules/branches/main') {
+      const value = actorEntries(options)[path]
+      if (value) return value()
+    }
+    if (path === BASE) return respond(200, { private: false, full_name: OWNER + '/' + REPO })
+    if (path.startsWith(BASE + '/rules/branches/')) return respond(200, [])
+    if (path === BASE + '/branches/main') {
+      return respond(200, { name: 'main', protected: options.protected !== false,
+        commit: { sha: mainHead } })
+    }
+    if (path.startsWith(BASE + '/branches/')) {
+      const name = path.slice((BASE + '/branches/').length)
+      const entry = branches.get(name)
+      return entry ? respond(200, { name, protected: false, commit: { sha: entry.head } }) : respond(404, {})
+    }
+    if (path === BASE + '/contents/labourchain.config.yaml' && method === 'GET') {
+      const ref = parsed.searchParams.get('ref') || 'main'
+      if (ref === 'main') return mainContent == null ? respond(404, {}) : respond(200, file(mainContent, mainFileSha))
+      const entry = branches.get(ref)
+      return entry ? respond(200, file(entry.content, entry.fileSha)) : respond(404, {})
+    }
+    if (path === BASE + '/git/refs' && method === 'POST') {
+      const body = JSON.parse(init.body)
+      const name = body.ref.replace('refs/heads/', '')
+      branches.set(name, { content: mainContent, fileSha: mainFileSha, head: body.sha })
+      return respond(201, { ref: body.ref, object: { sha: body.sha } })
+    }
+    if (path.startsWith(BASE + '/git/ref/heads/')) {
+      const name = path.slice((BASE + '/git/ref/heads/').length)
+      const entry = branches.get(name)
+      return entry ? respond(200, { object: { sha: entry.head } }) : respond(404, {})
+    }
+    if (path === BASE + '/contents/labourchain.config.yaml' && method === 'PUT') {
+      const body = JSON.parse(init.body)
+      const next = Buffer.from(body.content, 'base64').toString('utf8')
+      if (body.branch === 'main') {
+        mainContent = next; mainFileSha = NEW_FILE_SHA; mainHead = COMMIT_SHA
+      } else {
+        const entry = branches.get(body.branch)
+        if (!entry) return respond(404, {})
+        entry.content = next; entry.fileSha = NEW_FILE_SHA; entry.head = COMMIT_SHA
+      }
+      return respond(200, { commit: { sha: COMMIT_SHA }, content: { sha: NEW_FILE_SHA } })
+    }
+    if (path === BASE + '/pulls' && method === 'POST') {
+      return respond(201, { number: 88, html_url: 'https://github.com/octocat/demo/pull/88' })
+    }
+    if (path === BASE + '/labels' && method === 'GET') return respond(200, labels)
+    if (path === BASE + '/issues' && method === 'GET') return respond(200, [currentIssue])
+    if (path === BASE + '/issues/1' && method === 'GET') return respond(200, currentIssue)
+    if (path === BASE + '/issues/1/labels/foo:old' && method === 'DELETE') {
+      currentIssue = { ...currentIssue,
+        labels: currentIssue.labels.filter(label => label.name !== 'foo:old') }
+      return respond(200, currentIssue.labels)
+    }
+    if (path === BASE + '/labels/foo:old' && method === 'GET') {
+      const label = labels.find(item => item.name === 'foo:old')
+      return label ? respond(200, label) : respond(404, {})
+    }
+    return respond(404, { message: 'Unexpected ' + method + ' ' + path })
+  }
+  return { fetcher, calls, getIssue: () => currentIssue, getMainContent: () => mainContent }
+}
+
+const resolve = async () => installed()
+const writeContext = async (_request, options) => {
+  assert.equal(options.dynamicInstallation, true)
+  return { body: writeContext.body, token: 'user-oauth-token' }
+}
+
+test('repo-config public GET reads only main and exposes a default preview without login', async () => {
+  const mock = mockFetcher({ content: null })
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher,
+    resolveInstalledRepository: resolve,
+    previewAccessFactory: async () => ({ token: 'app-install-read-token' }),
+    readSession: () => null,
+  })
+  const response = await handler.fetch(new Request(
+    'https://example.test/api/repo-config?owner=octocat&repo=demo'))
+  const data = await response.json()
+  assert.equal(response.status, 200)
+  assert.equal(data.state, 'config_missing')
+  assert.equal(data.branch, 'main')
+  assert.equal(data.config.state, 'config_missing')
+  assert.match(data.config.defaultPreview, /channel:/)
+  assert.equal(data.canApply, false)
+  assert.ok(!mock.calls.some(call => call.method !== 'GET'))
+})
+
+test('repo-config rejects a caller-selected branch', async () => {
+  const handler = createRepoConfigHandler()
+  const response = await handler.fetch(new Request(
+    'https://example.test/api/repo-config?owner=octocat&repo=demo&branch=feature'))
+  const data = await response.json()
+  assert.equal(response.status, 400)
+  assert.equal(data.state, 'invalid_target')
+})
+
+test('protected Config update uses OAuth user identity, maintenance branch and a PR', async () => {
+  const mock = mockFetcher()
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'save_config', branch: 'main',
+    content: NEXT_CONFIG, expectedHeadSha: HEAD, expectedFileSha: FILE_SHA,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher,
+    resolveInstalledRepository: resolve,
+    writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  const data = await response.json()
+  assert.equal(response.status, 200)
+  assert.equal(data.state, 'awaiting_pr_merge')
+  assert.equal(data.prUrl, 'https://github.com/octocat/demo/pull/88')
+  assert.equal(data.branch.startsWith('labourchain/config-'), true)
+  assert.ok(mock.calls.some(call => call.method === 'POST' && call.path === BASE + '/git/refs' &&
+    call.authorization === 'Bearer user-oauth-token'))
+  assert.ok(mock.calls.some(call => call.method === 'PUT' &&
+    call.path === BASE + '/contents/labourchain.config.yaml' &&
+    call.authorization === 'Bearer user-oauth-token'))
+  assert.ok(mock.calls.some(call => call.method === 'POST' && call.path === BASE + '/pulls' &&
+    call.authorization === 'Bearer user-oauth-token'))
+  assert.ok(mock.calls.some(call => call.path === '/app/installations/17' &&
+    call.authorization === 'Bearer app-jwt'))
+  assert.ok(!mock.calls.some(call => call.authorization === 'Bearer app-install-read-token'))
+  assert.equal(mock.getMainContent(), CONFIG)
+})
+
+async function syncPreviewId(mock) {
+  const preview = await readRepoConfigPreview({
+    owner: OWNER, repo: REPO,
+    accessFactory: async () => ({ token: 'user-oauth-token' }),
+    read: async (_access, path) => {
+      const url = new URL('https://api.github.com' + path)
+      const decoded = decodeURIComponent(url.pathname)
+      if (decoded === BASE) return { data: { private: false, full_name: OWNER + '/' + REPO } }
+      if (decoded === BASE + '/branches/main') {
+        return { data: { name: 'main', commit: { sha: HEAD } } }
+      }
+      if (decoded === BASE + '/contents/labourchain.config.yaml') {
+        return { data: file('namespaces:\n  foo: []\n', FILE_SHA) }
+      }
+      if (decoded === BASE + '/labels') return { data: [{ name: 'foo:old' }], link: '' }
+      if (decoded === BASE + '/issues') return { data: [issue()], link: '' }
+      throw new Error('Unexpected preview path ' + path)
+    },
+  })
+  assert.equal(preview.state, 'changes')
+  return preview.snapshotId
+}
+
+test('Label sync requires explicit cleanup confirmation and uses exact DELETE with OAuth user token', async () => {
+  const mock = mockFetcher({
+    content: 'namespaces:\n  foo: []\n',
+    issue: issue(),
+    labels: [{ name: 'foo:old' }],
+  })
+  const previewId = await syncPreviewId(mock)
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'sync_labels', branch: 'main',
+    previewId, confirmRemovals: true,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher,
+    resolveInstalledRepository: resolve,
+    writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  const data = await response.json()
+  assert.equal(response.status, 200)
+  assert.equal(data.state, 'ready')
+  assert.equal(data.removedAssociations, 1)
+  assert.deepEqual(mock.getIssue().labels, [])
+  const deletion = mock.calls.find(call => call.method === 'DELETE')
+  assert.equal(deletion.path, BASE + '/issues/1/labels/foo:old')
+  assert.equal(deletion.authorization, 'Bearer user-oauth-token')
+  assert.ok(!mock.calls.some(call => call.method === 'PUT' && call.path.includes('/issues/')))
+})
+
+test('Label sync rejects an expired snapshot before any mutation', async () => {
+  const mock = mockFetcher({ content: 'namespaces:\n  foo: []\n' })
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'sync_labels', branch: 'main',
+    previewId: '0'.repeat(64), confirmRemovals: true,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher, resolveInstalledRepository: resolve, writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  const data = await response.json()
+  assert.equal(response.status, 409)
+  assert.equal(data.state, 'stale_preview')
+  assert.ok(!mock.calls.some(call => call.method !== 'GET'))
+})
+
+test('Label sync without destructive confirmation performs no writes', async () => {
+  const mock = mockFetcher({
+    content: 'namespaces:\n  foo: []\n',
+    issue: issue(),
+    labels: [{ name: 'foo:old' }],
+  })
+  const previewId = await syncPreviewId(mock)
+  writeContext.body = {
+    owner: OWNER, repo: REPO, action: 'sync_labels', branch: 'main',
+    previewId, confirmRemovals: false,
+  }
+  const handler = createRepoConfigHandler({
+    fetcher: mock.fetcher, resolveInstalledRepository: resolve, writeContext,
+  })
+  const response = await handler.fetch(new Request('https://example.test/api/repo-config', {
+    method: 'POST', headers: { origin: 'https://example.test' },
+  }))
+  const data = await response.json()
+  assert.equal(response.status, 400)
+  assert.equal(data.state, 'confirmation_required')
+  assert.ok(!mock.calls.some(call => call.method !== 'GET'))
+})

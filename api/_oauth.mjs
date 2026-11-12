@@ -85,6 +85,8 @@ export function validLoginReturnPath(path) {
       Number.isSafeInteger(Number(path.split('/').at(-1)))) return path
   if (typeof path === 'string' &&
       /^\/[a-z\d-]{1,39}\/[a-z\d._-]{1,100}\/members(?:\/register)?$/i.test(path)) return path
+  if (typeof path === 'string' &&
+      /^\/[a-z\d-]{1,39}\/[a-z\d._-]{1,100}\/config$/i.test(path)) return path
   return '/'
 }
 

@@ -36,6 +36,10 @@
     {
       "source": "/api/github-installation-probe",
       "destination": "/api/repo-access?__lc_route=github-installation-probe"
+    },
+    {
+      "source": "/api/repo-config",
+      "destination": "/api/repo-access?__lc_route=repo-config"
     }
   ]
 }
