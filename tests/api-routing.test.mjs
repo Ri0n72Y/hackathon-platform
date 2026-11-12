@@ -6,7 +6,7 @@ import repoAccess from '../api/repo-access.mjs'
 
 const issueRoutes = ['issue-detail', 'issue-comments', 'issue-config']
 const repoRoutes = ['repo-home', 'repo-feed', 'repo-member-permission',
-  'repo-member-register', 'github-installation-probe', 'repo-config', 'repo-channels']
+  'repo-member-register', 'github-installation-probe', 'repo-config', 'repo-channels', 'topic-page', 'topic-projects']
 
 const url = (gateway, route, query = '') =>
   'https://example.test/api/' + gateway + '?__lc_route=' + route + (query ? '&' + query : '')
@@ -29,7 +29,7 @@ test('Vercel rewrites retain each established public URL and the original SPA fa
   assert.equal(spa.destination, '/index.html')
   assert.equal(new RegExp('^' + spa.source + '$').test('/api/issue-detail'), false)
   assert.equal(new RegExp('^' + spa.source + '$').test('/octocat/repo/issues/1'), true)
-  assert.equal(rewrites.length, 10)
+  assert.equal(rewrites.length, 12)
   for (const name of issueRoutes) {
     assert.deepEqual(rewrites.find(r => r.source === '/api/' + name),
       { source: '/api/' + name, destination: '/api/issue-read?__lc_route=' + name })
@@ -73,4 +73,9 @@ test('grouped readers still pass unchanged target query to original validation',
   const channels = await repoAccess.fetch(new Request(url('repo-access', 'repo-channels',
     'owner=wrong/name&repo=repo')))
   assert.equal(channels.status, 400)
+  for (const route of ['topic-page', 'topic-projects']) {
+    const bad = await repoAccess.fetch(new Request(url('repo-access', route,
+      'owner=wrong/name&repo=repo')))
+    assert.equal(bad.status, 400)
+  }
 })

@@ -44,6 +44,14 @@
     {
       "source": "/api/repo-channels",
       "destination": "/api/repo-access?__lc_route=repo-channels"
+    },
+    {
+      "source": "/api/topic-page",
+      "destination": "/api/repo-access?__lc_route=topic-page"
+    },
+    {
+      "source": "/api/topic-projects",
+      "destination": "/api/repo-access?__lc_route=topic-projects"
     }
   ]
 }
