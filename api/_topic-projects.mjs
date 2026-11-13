@@ -17,6 +17,10 @@ export function createTopicProjectsEndpoint({ fetcher = fetch } = {}) {
         if (!data || !Number.isSafeInteger(data.total_count) || data.total_count < 0 ||
             !Array.isArray(data.items)) throw new TopicFetchError(
           'GitHub Topic Search 响应无效', 502, 'topic-search')
+        // GitHub may return HTTP 200 with incomplete_results on a timed-out Search.
+        // Never interpret a partial candidate set as a complete or empty result.
+        if (data.incomplete_results === true) throw new TopicFetchError(
+          'GitHub Topic Search 结果不完整，请重试读取', 502, 'topic-search')
         const accessible = Math.min(data.total_count, 1000)
         const hasNext = page * 100 < accessible
         return reply({
