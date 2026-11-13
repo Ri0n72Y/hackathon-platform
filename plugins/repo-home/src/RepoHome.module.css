@@ -189,6 +189,18 @@
 .homePage [role="alert"] {border-left:3px solid var(--lc-error);color:var(--lc-text)}
 .homePage [role="status"] {color:var(--lc-text-secondary)}
 .homePage [role="alert"] button {margin-left:8px}
+.homePage .teamPanel > p:not([role]),.homePage .feedSection > p:not([role]) {
+  padding:12px 14px;border-radius:10px;
+  background:var(--lc-surface);color:var(--lc-text-secondary);
+  overflow-wrap:anywhere;
+}
+.homePage .feedSection > button {
+  margin-top:16px;background:var(--lc-primary);
+  border-color:transparent;color:var(--lc-on-primary);font-weight:700;
+}
+.homePage .feedSection > button:hover:not(:disabled) {
+  background:var(--lc-primary-hover);border-color:transparent;
+}
 @media(max-width:899px) {.homeLayout {padding-inline:24px}}
 @media(max-width:680px) {
   .homeLayout {padding:18px 16px 60px}
