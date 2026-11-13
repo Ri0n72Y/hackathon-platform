@@ -8,6 +8,7 @@
 ## B1 Search 真实调用预算
 - API _topic-projects.mjs 每页 100，最大 page=10；禁止第 11 页；匿名 GitHub Search 最多连续 10 次请求。筛选/大小写去重后不足 10 个才继续取页。
 - total_count > 1000 且已读取第 10 页、仍不足 10 个有效结果：返回 windowExhausted，并在页面提示不能确认所有候选均已耗尽。total_count <= 1000 时最后可访问页属于真实结果结束，不报窗口耗尽。
+- GitHub Search HTTP 200 但 `incomplete_results: true` 表示搜索服务已返回不完整候选。API 明确返回 `502 / topic-search / retryable:true`；Control 拒绝不完整页面，不将候选解释为真实结束、空列表或 1000 窗口告警。HTTP→Control Mock 同时覆盖空页、有项目页及第二页截断，失败时整体不展示部分候选。
 - GitHub 429/403/422、网络异常显示明确错误及可重试提示，不视作真实列表结束。匿名 Search 额度按公网 IP 共享，即使请求数不超过 10，真实请求也可能限流；本实现不自行重试或绕过限额。
 - 可执行 tests/topic-pagination.test.mjs 通过真实 grouped 内部 handler + Control 同源加载函数模拟 10 页 Search、100 项/页、稀疏白名单、1000 与超过 1000 窗口、两页终止、第 2 页 429、page=11 拒绝。
 
@@ -18,7 +19,7 @@
 - POST 前以 User Access Token 再次读取 /repos/{owner}/{repo}，严格确认 full_name、private=false、has_issues=true、权限 triage/push/maintain/admin 中至少一项为真。没有 Installation 证明要求，也绝不回退 App/Bot Token。
 - 完全由服务端在 github.com API 下构造 /repos/{owner}/{repo}/issues 的 POST，Payload 仅 {title,body}。可疑 Token、Cookie、Bearer、环境变量字样的报告内容被拒绝。服务端不输出凭证、请求头、原始 GitHub 错误正文。
 - GitHub 201 只有在真实 Issue number 与 https://github.com/{owner}/{repo}/issues/{number} 严格匹配时，才显示成功链接。401/403/404/410/422/429 明确错误；503、网络超时或 201 无法核实返回 outcomeUnknown，保留草稿，禁用重复提交，用户必须先到 GitHub 核查并明确点击“已核查，允许再次提交”，系统才重新验证权限，且**不会自动重放 POST**。
-- 用户的现有 User Access Token 若对仓库权限不足，显示权限错误。此任务不新增/扩大 GitHub App 权限、OAuth scope，也不以 Bot 代写。GitHub 可能因为 App User Token 实际访问范围限制而拒绝写入，此时当前版本 fail-closed 并提示，无自动扩权。
+- GitHub App User Access Token 仅覆盖当前用户与 App 授权仓库的交集。对未安装 App 的外部公开 Topic 源仓库，即使用户个人具有写入权限，自动报告功能仍可能受平台权限边界阻断。Reviewer B1-2 已请求 Lead/用户决定业务契约；本轮不改变 OAuth、Installation 或写入权限。无法写入时明确拒绝并保留 GitHub 手动创建入口，不宣称外部仓库自动写入普遍可用。
 
 ## 独立受控 Fixture 与测试
 - 在 Playground 中访问 /topic/sample/repo?topicFixture=1&topicCase=ready|empty|window|rate-limit|report-fail|report-success|report-unknown&fixtureAuth=1。
@@ -29,5 +30,5 @@
 
 ## 当前明确未验证的内容
 - 用户已决定暂缓 Playground 浏览器人工操作、真实 Vercel Runtime、真实 OAuth/仓库权限与任何真实 GitHub Issue 写入 D4。此 PR 的 Node/HTTP/SSR Mock、CI 成功只能证明当前代码对替身的可执行契约，不能当作真实 GitHub 创建成功证据。
-- 结果未知时不存在分布式持久去重数据库；不会静默重放，但同一用户在手工核查后再次确认可能创建第二条 Issue。必须先核查真实 GitHub。
+- 结果未知时不存在分布式持久去重数据库；不会静默重放，但同一用户在手工核查后再次确认可能创建第二条 Issue。弹窗提供指向当前源仓库的现有 Issues 列表入口，必须先核查真实 GitHub。
 - 独立 Reviewer 对新 Head 完整审查（包括 B1 与新 POST）并由 Owner 显式决定合并；本 Coder 不自行批准、合并或关闭旧 PR #35。
