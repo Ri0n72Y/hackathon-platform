@@ -12,7 +12,8 @@ const meta = {
   repository: { full_name: source }, config: { whitelist: true },
   allowedRepositories: ['member/project-1', 'member/project-2'],
 }
-function backend({ totalCount = 1400, failPage = 0 } = {}) {
+function backend({ totalCount = 1400, failPage = 0, incompletePage = 0,
+  emptyIncomplete = false } = {}) {
   const calls = [], errors = []
   const fetcher = async (url, opts = {}) => {
     const u = new URL(url)
@@ -32,7 +33,8 @@ function backend({ totalCount = 1400, failPage = 0 } = {}) {
       })
       const count = Math.max(0, Math.min(100, totalCount - (page - 1) * 100))
       return Response.json({ total_count: totalCount,
-        items: Array.from({ length: count }, (_, index) => {
+        incomplete_results: page === incompletePage,
+        items: Array.from({ length: page === incompletePage && emptyIncomplete ? 0 : count }, (_, index) => {
           const id = (page - 1) * 100 + index + 1
           const full_name = page === 1 && index === 0 ?
             'member/project-1' : 'outside/candidate-' + id
@@ -111,4 +113,42 @@ test('#31 B1 refuses page 11 before contacting GitHub; stops invalid page-10 has
         items: [{ full_name: 'outside/ignored', html_url: 'https://github.com/outside/ignored' }] }
     }), { stage: 'topic-search', status: 502 })
   assert.deepEqual(calls, [1,2,3,4,5,6,7,8,9,10])
+})
+
+test('#31 B1-1 HTTP 200 incomplete Search fails closed for empty and nonempty candidate pages', async () => {
+  for (const emptyIncomplete of [true, false]) {
+    const api = backend({ totalCount: 1, incompletePage: 1, emptyIncomplete })
+    const http = await api.endpoint.fetch(request(1))
+    assert.equal(http.status, 502)
+    const body = await http.json()
+    assert.equal(body.stage, 'topic-search')
+    assert.equal(body.retryable, true)
+    assert.match(body.error, /结果不完整/)
+    await assert.rejects(
+      loadTopicProjectCandidates(meta, api.getPage, new AbortController().signal),
+      { stage: 'topic-search', status: 502, message: /结果不完整/ })
+    assert.deepEqual(api.calls.map(call => call.page), [1, 1])
+  }
+})
+
+test('#31 B1-1 incomplete second Search page never returns first-page candidates', async () => {
+  const api = backend({ totalCount: 170, incompletePage: 2 })
+  await assert.rejects(
+    loadTopicProjectCandidates(meta, api.getPage, new AbortController().signal),
+    { stage: 'topic-search', status: 502, message: /结果不完整/ })
+  assert.deepEqual(api.calls.map(call => call.page), [1, 2])
+})
+
+test('#31 B1-1 Control rejects incomplete pages even if a caller incorrectly returns HTTP success', async () => {
+  const calls = []
+  await assert.rejects(
+    loadTopicProjectCandidates(meta, async page => {
+      calls.push(page)
+      return { page, perPage: 100, totalCount: 1, hasNext: false,
+        windowExhausted: false, incompleteResults: true,
+        items: [{ full_name: 'member/project-1',
+          html_url: 'https://github.com/member/project-1' }] }
+    }, new AbortController().signal),
+    { stage: 'topic-search', status: 502, message: /结果不完整/ })
+  assert.deepEqual(calls, [1])
 })
