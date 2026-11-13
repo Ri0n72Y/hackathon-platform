@@ -128,7 +128,7 @@ export default function TopicPageContainer({ owner, repo, api }: {
   }
   async function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!api.reportAvailable || !authenticated || report.pending || report.checking ||
+    if (writeAbort.current || !api.reportAvailable || !authenticated || report.pending || report.checking ||
         report.uncertain || !report.proof || !report.title.trim() ||
         !report.body.trim()) return
     const controller = new AbortController()
