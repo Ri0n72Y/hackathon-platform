@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { lazy, Suspense, type ComponentType } from 'react'
 import { useParams } from 'react-router'
 import { memberRegistrationScope } from './domain.mjs'
+import type { RepoHomeTheme } from './RepoHomePage'
 import { RepoHomeService, readDisplayBranch, type RepoHomeApi } from './service'
 const RepoHomePage = lazy(() => import('./RepoHomePage'))
 const MembersPage = lazy(() => import('./MembersPage'))
@@ -13,7 +14,8 @@ function ScopedMemberRegisterPage({ api }: { api: RepoHomeApi }) {
   return <MemberRegisterPage key={scope} api={api} />
 }
 /** @summary Register the independently testable Repo homepage, team listing and registration routes. */
-export function createRepoHomePlugin(api: RepoHomeApi = new RepoHomeService()) {
+export function createRepoHomePlugin(api: RepoHomeApi = new RepoHomeService(),
+  options: { theme?: RepoHomeTheme } = {}) {
   return { name: 'repo-home', inject: ['reactUI'], apply(ctx: Context) {
     const register = (id: string, path: string, Component: ComponentType<{ api: RepoHomeApi }>) => {
       function Entry() {
@@ -21,7 +23,9 @@ export function createRepoHomePlugin(api: RepoHomeApi = new RepoHomeService()) {
       }
       ctx.effect(() => ctx.reactUI.registerPage({ id, path, Component: Entry }))
     }
-    register('repo-home', '/:owner/:repo', RepoHomePage)
+    const HomeWithVisualTheme = ({ api }: { api: RepoHomeApi }) =>
+      <RepoHomePage api={api} theme={options.theme} />
+    register('repo-home', '/:owner/:repo', HomeWithVisualTheme)
     register('repo-home-members', '/:owner/:repo/members', MembersPage)
     register('repo-home-register', '/:owner/:repo/members/register', ScopedMemberRegisterPage)
   } }
