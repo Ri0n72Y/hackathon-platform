@@ -79,6 +79,45 @@ async function allowedInstallation({ fetcher, token, owner, repo, installationRe
       installation.repositoryId <= 0) {
     return { error: validationError('GitHub App 安装授权证明无效', 502) }
   }
+  // This Topic report requires Issues:write on the current App installation.
+  // Only the App JWT reads installation details; it never creates Issues.
+  if (typeof installation.jwt !== 'string' || !installation.jwt) {
+    return { error: validationError('GitHub App 安装权限证明无效', 502) }
+  }
+  let appResponse
+  try {
+    appResponse = await fetcher(GH + '/app/installations/' + installation.installationId, {
+      method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(10000),
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'LabourChain-TopicReport',
+        Authorization: 'Bearer ' + installation.jwt,
+      },
+    })
+  } catch {
+    return { error: reply({ state: 'rejected', stage: 'installation',
+      error: 'GitHub App Issues 权限核查未能完成，请稍后重试' }, 502) }
+  }
+  if (!appResponse.ok) {
+    if (appResponse.status === 404) {
+      return { error: validationError('当前 GitHub App 安装不可访问', 403) }
+    }
+    return { error: githubFailure(appResponse, 'installation') }
+  }
+  let appDetails
+  try { appDetails = await appResponse.json() } catch {
+    return { error: validationError('GitHub App 安装权限响应无法解析', 502) }
+  }
+  if (appDetails?.id !== installation.installationId ||
+      appDetails.account?.login?.toLowerCase() !== owner.toLowerCase() ||
+      appDetails.suspended_at) {
+    return { error: validationError('GitHub App 安装身份或状态无法确认', 502) }
+  }
+  if (appDetails.permissions?.issues !== 'write') {
+    return { error: reply({ state: 'rejected', stage: 'installation',
+      error: '当前 GitHub App 安装未授予 Issues 写权限；请在 GitHub 手动创建 Issue' }, 403) }
+  }
   const expected = (owner + '/' + repo).toLowerCase()
   const id = installation.installationId
   // GitHub App user tokens are scoped to the intersection of App installation
