@@ -148,3 +148,8 @@ test('#31 B1-1 incomplete GitHub Search renders retryable failure, never an empt
   assert.doesNotMatch(html, /当前可访问搜索范围没有符合配置的项目/)
   assert.doesNotMatch(html, /1000 条可访问窗口已耗尽/)
 })
+
+test('#31 report Control uses a synchronous in-flight guard against rapid duplicate submits', () => {
+  const control = readFileSync(resolve(root, 'plugins/topic-page/src/TopicPageContainer.tsx'), 'utf8')
+  assert.match(control, /writeAbort\.current \|\| !api\.reportAvailable/)
+})
