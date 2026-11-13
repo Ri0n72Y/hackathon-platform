@@ -289,12 +289,14 @@ test('#31 B1-2 unavailable installation evidence fails closed without writing', 
     [{ userInstallNetworkFailure: true }, 502],
     [{ userInstallMalformed: true }, 502],
     [{ userInstallStatus: 404 }, 403],
+    [{ userInstallStatus: 403 }, 403],
     [{ userInstallStatus: 429 }, 429],
   ]) {
     const s = setup(options)
     const pre = await s.preflight()
     assert.equal(pre.response.status, status)
     assert.notEqual(pre.data.state, 'ready')
+    if (options.userInstallStatus === 403) assert.match(pre.data.error, /App/)
     assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
   }
 })
