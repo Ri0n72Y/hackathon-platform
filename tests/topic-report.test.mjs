@@ -330,3 +330,66 @@ test('#31 B1-2 App installation is revalidated before POST after the preflight p
   assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
   assert.equal(s.calls.filter(c => c.path === ghRepo + '/installation').length, 2)
 })
+
+test('#31 B1 App Issues:write is mandatory before issuing a report proof', async () => {
+  const authorized = setup({ appIssuesPermission: 'write' })
+  const ready = await authorized.preflight()
+  assert.equal(ready.response.status, 200)
+  assert.equal(ready.data.state, 'ready')
+  assert.equal((await authorized.submit(ready.data.proof)).status, 201)
+  const appReads = authorized.calls.filter(c => c.path === '/app/installations/17')
+  assert.equal(appReads.length, 2, 'GET and POST must recheck App Issues grant')
+  assert.ok(appReads.every(c => c.method === 'GET' && /^Bearer ey/.test(c.authorization)))
+  const post = authorized.calls.filter(c => c.method === 'POST')
+  assert.equal(post.length, 1)
+  assert.equal(post[0].authorization, 'Bearer user-alice')
+
+  for (const opts of [
+    { appIssuesPermission: 'read' },
+    { appIssuesPermission: 'admin' },
+    { appIssuesPermission: 'WRITE' },
+    { appPermissionsMissing: true },
+    { appPermissionsMalformed: true },
+  ]) {
+    const s = setup(opts)
+    const denied = await s.preflight()
+    assert.equal(denied.response.status, 403)
+    assert.equal(denied.data.state, 'rejected')
+    assert.match(denied.data.error, /Issues 写权限/)
+    assert.equal(s.calls.filter(c => c.path === '/app/installations/17').length, 1)
+    assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
+    assert.equal(s.calls.some(c => c.path.startsWith('/user/installations/')), false,
+      'missing App write grant must stop before user permission enumeration')
+  }
+})
+
+test('#31 B1 App grant read failures and mismatched installation fail closed', async () => {
+  for (const [opts, status] of [
+    [{ appPermissionNetworkFailure: true }, 502],
+    [{ appPermissionStatus: 404 }, 403],
+    [{ appPermissionStatus: 429 }, 429],
+    [{ appPermissionStatus: 503 }, 502],
+    [{ appPermissionInvalidJson: true }, 502],
+    [{ appPermissionWrongId: true }, 502],
+    [{ appPermissionWrongAccount: true }, 502],
+    [{ appPermissionSuspended: true }, 502],
+  ]) {
+    const s = setup(opts)
+    const denied = await s.preflight()
+    assert.equal(denied.response.status, status)
+    assert.notEqual(denied.data.state, 'ready')
+    assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
+  }
+})
+
+test('#31 B1 a grant downgraded after proof is rejected before POST without Bot fallback', async () => {
+  const s = setup({ appIssuesPermission: 'write' })
+  const ready = await s.preflight()
+  assert.equal(ready.data.state, 'ready')
+  s.setAppIssuesPermission('read')
+  const denied = await s.submit(ready.data.proof)
+  assert.equal(denied.status, 403)
+  assert.match((await denied.json()).error, /Issues 写权限/)
+  assert.equal(s.calls.filter(c => c.path === '/app/installations/17').length, 2)
+  assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
+})
