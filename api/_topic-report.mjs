@@ -28,7 +28,9 @@ function githubFailure(response, stage) {
   const retryAfter = response.headers.get('retry-after')
   const errors = {
     401: 'GitHub 用户授权已过期，请重新登录',
-    403: '当前用户缺少此仓库的 Issues 写权限；请检查仓库协作者权限和 OAuth 授权',
+    403: stage === 'installation' ?
+      '无法确认当前用户与 GitHub App 的共同仓库授权；请检查 App 安装和用户权限' :
+      '当前用户缺少此仓库的 Issues 写权限；请检查仓库协作者权限和 OAuth 授权',
     404: '公开仓库不存在或当前用户不可访问',
     410: '此仓库未启用 GitHub Issues',
     422: 'GitHub 拒绝报告内容，请检查标题与正文',
