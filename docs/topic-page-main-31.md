@@ -16,11 +16,11 @@
 - 仅已登录 GitHub 用户会看到错误报告编辑入口。GET /api/topic-report?owner&repo 检查当前 User Access Token 对目标的公开可读、Issues 已启用及协作者创建权限，返回绑定当前用户会话指纹、owner/repo、10 分钟 TTL 的密封目标证明。
 - 用户自行修改标题和正文、点击确认后，浏览器向 /api/topic-report 发送单次 JSON POST（credentials: same-origin、Origin、X-LabourChain-Write、confirmed=true 和目标 proof）。
 - 服务端检查同源及 Sec-Fetch-Site、加密 OAuth Session、确认标志、128 KiB 原始请求大小、标题正文长度、owner/repo、禁止任意 destination URL、目标 proof 绑定身份/仓库/有效期；可用时比较 Referer 的 Topic 页面仓库路径。
-- POST 前以 User Access Token 再次读取 /repos/{owner}/{repo}，严格确认 full_name、private=false、has_issues=true、权限 triage/push/maintain/admin 中至少一项为真。没有 Installation 证明要求，也绝不回退 App/Bot Token。
+- GET 预检和 POST 前均须核验目标公开仓库对应的当前 App Installation、该 Installation 实际授予 `permissions.issues === 'write'`、User Access Token 与 App 的共同仓库授权，以及当前用户对目标仓库 `has_issues=true` 和 triage/push/maintain/admin 至少一项为真；任何一步未确认都拒绝自动报告。实际创建仅使用 User Access Token，绝不回退 App JWT/Installation/Bot Token。
 - 完全由服务端在 github.com API 下构造 /repos/{owner}/{repo}/issues 的 POST，Payload 仅 {title,body}。可疑 Token、Cookie、Bearer、环境变量字样的报告内容被拒绝。服务端不输出凭证、请求头、原始 GitHub 错误正文。
 - GitHub 201 只有在真实 Issue number 与 https://github.com/{owner}/{repo}/issues/{number} 严格匹配时，才显示成功链接。401/403/404/410/422/429 明确错误；503、网络超时或 201 无法核实返回 outcomeUnknown，保留草稿，禁用重复提交，用户必须先到 GitHub 核查并明确点击“已核查，允许再次提交”，系统才重新验证权限，且**不会自动重放 POST**。
 - GitHub App User Access Token 仅覆盖当前用户与 App 授权仓库的交集。依照 [Lead 已确认的 B1-2 降级策略](https://github.com/Ri0n72Y/hackathon-platform/issues/31#issuecomment-6848294203)，自动 Issue 报告必须对同一目标同时满足当前 App 授权安装与当前 OAuth 用户的 Issues 创建权限；其他公开 TopicPage 仍可匿名只读，报告走手动 GitHub Issue 入口。
-- GET 预检与 POST 前均复用 `resolveInstalledRepository`：用 App JWT（仅安装核验）确认匹配的公开仓库、当前 App Installation 与仓库 id；再用当前 User Access Token 读取 `/user/installations/{id}/repositories`（每页100，最多10页），要求同一 id、full_name、公开属性精确匹配；最后单独检查当前用户仓库的 Issues 开关与 triage/push/maintain/admin 权限。安装/交集列表不可用、被拒绝、响应异常、超出核验上限一律 fail-closed；任何写入只由 User Token POST，绝不使用 JWT/Bot 代写。
+- GET 预检与 POST 前均复用 `resolveInstalledRepository`：用 App JWT（仅安装核验）确认匹配的公开仓库、当前 App Installation 与仓库 id；以同一个 App JWT 对 `GET /app/installations/{id}` 只读核查 Installation id、所属账号、未暂停及 `permissions.issues === 'write'`；再用当前 User Access Token 读取 `/user/installations/{id}/repositories`（每页100，最多10页），要求同一 id、full_name、公开属性精确匹配；最后单独检查当前用户仓库的 Issues 开关与 triage/push/maintain/admin 权限。安装权限为 read、缺失、非法、读取异常或发生降权时都 fail-closed，不能签发 ready proof 或继续 POST；任何写入只由 User Token 执行。
 - 受控 Node/HTTP Mock 现在实际模拟匿名公开仓库元数据、签名 App JWT 安装查询、User Token 安装仓库列表、用户仓库权限及最终 Issue POST，覆盖 App 已装/未装 × 用户可写/不可写、私有、安装证明异常/429/网络失败、预检后安装撤销、已有目标 Proof 防篡改与提交结果未知。前端同时增加“查看现有 Issues”链接与同步 in-flight 防重复提交保护。
 
 ## 独立受控 Fixture 与测试
