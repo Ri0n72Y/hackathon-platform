@@ -106,6 +106,10 @@ export async function loadTopicProjectCandidates(meta, getPage, signal, minimum 
     if (signal?.aborted) throw new Error('Topic query aborted')
     const response = await getPage(page)
     if (signal?.aborted) throw new Error('Topic query aborted')
+    if (response?.incompleteResults === true) {
+      throw Object.assign(new Error('GitHub Topic Search 结果不完整，请重试读取'),
+        { stage: 'topic-search', status: 502 })
+    }
     if (!response || response.page !== page || response.perPage !== 100 ||
         !Array.isArray(response.items) ||
         (response.hasNext && page === 10) ||
