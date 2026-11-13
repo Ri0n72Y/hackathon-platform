@@ -45,3 +45,167 @@
 .fieldError{display:block;font-size:13px;font-weight:600;color:#9d3046;line-height:1.4}
 .linkFields{display:grid;grid-template-columns:1fr 2fr;gap:10px}
 @media(max-width:680px){.page{padding:18px 16px 60px}.card,.memberCard{padding:16px}.memberGrid,.linkFields{grid-template-columns:minmax(0,1fr)}.avatar,.avatarButton{width:36px;height:36px}.popover{max-width:calc(100vw - 24px)}}
+
+/* Repo Home Phase A only. Other repo pages retain their current appearance.
+   A theme attribute is supplied only by the controlled Repo Fixture for now. */
+.homePage {
+  --lc-canvas:#f5f7fa;--lc-surface:#fff;--lc-surface-raised:#f3f6fa;
+  --lc-surface-input:#f2f5f8;--lc-stroke:#dce3ec;--lc-stroke-strong:#bcc8d7;
+  --lc-text:#202c3c;--lc-text-secondary:#40516a;--lc-text-muted:#617086;
+  --lc-primary:#195ca8;--lc-primary-hover:#124a8a;--lc-on-primary:#fff;
+  --lc-link:#195ca8;--lc-focus:#195ca8;--lc-accent-soft:#eaf1fb;
+  --lc-accent-ink:#254b78;--lc-error:#9d3046;--lc-shadow:0 8px 24px #17294212;
+  --lc-radius:14px 14px 4px 14px;
+  max-width:none;width:100%;min-height:100vh;min-height:100dvh;
+  padding:0;margin:0;background:var(--lc-canvas);color:var(--lc-text);
+  font-size:15px;line-height:1.6;
+}
+.homePage[data-lc-theme="dark"] {
+  color-scheme:dark;
+  --lc-canvas:#11141b;--lc-surface:#191e29;--lc-surface-raised:#242b3b;
+  --lc-surface-input:#202737;--lc-stroke:#3c4659;--lc-stroke-strong:#71809b;
+  --lc-text:#f5f7ff;--lc-text-secondary:#c3ccdc;--lc-text-muted:#96a4c0;
+  --lc-primary:#5368e9;--lc-primary-hover:#465bd2;--lc-on-primary:#fff;
+  --lc-link:#92a6ff;--lc-focus:#acb7f8;--lc-accent-soft:#313a56;
+  --lc-accent-ink:#c3ccff;--lc-error:#ff8498;
+  --lc-shadow:0 12px 30px rgb(0 0 0 / 24%);
+}
+.homePage[data-lc-theme="light"] {
+  color-scheme:light;
+  --lc-canvas:#f5f7f1;--lc-surface:#fcfdf9;--lc-surface-raised:#eef3e1;
+  --lc-surface-input:#f6f9f0;--lc-stroke:#d4dfc9;--lc-stroke-strong:#7d9468;
+  --lc-text:#283327;--lc-text-secondary:#4b5b46;--lc-text-muted:#5b6b55;
+  --lc-primary:#d3e985;--lc-primary-hover:#c4de6c;--lc-on-primary:#283327;
+  --lc-link:#4a661b;--lc-focus:#6c8a2a;--lc-accent-soft:#e7f0c7;
+  --lc-accent-ink:#465f18;--lc-error:#ac334b;
+  --lc-shadow:0 8px 24px rgb(45 62 31 / 7%);
+}
+.homeLayout {box-sizing:border-box;max-width:1120px;margin-inline:auto;padding:24px 32px 80px}
+.homePage :where(a,button,input,textarea):focus-visible {
+  outline:3px solid var(--lc-focus);outline-offset:3px;
+}
+.homePage a {color:var(--lc-link);text-underline-offset:.15em}
+.homePage button,.homePage input {
+  border:1px solid var(--lc-stroke-strong);background:var(--lc-surface-input);
+  color:var(--lc-text);min-height:44px;
+}
+.homePage button {border-radius:10px;padding:9px 15px;transition:background-color .15s ease,border-color .15s ease}
+.homePage button:hover:not(:disabled) {background:var(--lc-surface-raised);border-color:var(--lc-focus)}
+.homePage button:disabled {opacity:.65;cursor:not-allowed}
+.homePage h1 {font-size:clamp(29px,3.6vw,38px);line-height:1.18;margin:8px 0 12px}
+.homePage h2 {font-size:20px;line-height:1.4;margin:0}
+.homePage .eyebrow,.homePage .muted,.homePage .cardMeta {color:var(--lc-text-muted)}
+.homePage .eyebrow {font-size:13px;letter-spacing:.04em;overflow-wrap:anywhere}
+.homePage .intro {max-width:70ch;color:var(--lc-text-secondary);line-height:1.75}
+.homePage .hero {
+  position:relative;display:block;min-width:0;padding:clamp(20px,3vw,30px);
+  border:1px solid var(--lc-stroke);border-radius:var(--lc-radius);
+  background:var(--lc-surface-raised);box-shadow:var(--lc-shadow);
+}
+.homePage .actions {gap:10px 12px;margin-top:18px}
+.homePage .actions a {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;padding:9px 14px;border-radius:10px;
+  border:1px solid var(--lc-stroke-strong);background:var(--lc-surface);
+  text-decoration:none;font-weight:600;
+}
+.homePage .actions a:hover {border-color:var(--lc-focus);text-decoration:underline}
+.homePage .actions .primaryLink {
+  border-color:transparent;background:var(--lc-primary);
+  color:var(--lc-on-primary);font-weight:700;
+}
+.homePage .actions .primaryLink:hover {background:var(--lc-primary-hover);color:var(--lc-on-primary)}
+.homePage .branch {padding-top:17px;margin-top:17px;border-top:1px solid var(--lc-stroke)}
+.homePage .branch label {font-size:13px;color:var(--lc-text-secondary)}
+.homePage .branch input {
+  padding:9px 12px;min-width:130px;max-width:min(220px,100%);
+  border-radius:8px;overflow-wrap:anywhere;
+}
+.homePage .branch button,.homePage .sectionHead button {
+  background:var(--lc-primary);border-color:transparent;
+  color:var(--lc-on-primary);font-weight:700;
+}
+.homePage .branch button:hover:not(:disabled),
+.homePage .sectionHead button:hover:not(:disabled) {
+  background:var(--lc-primary-hover);border-color:transparent;
+}
+.homePage .section {margin-top:32px}
+.homePage .sectionHead {gap:10px 16px;margin-bottom:14px}
+.homePage .sectionHead h2::before {
+  content:"";display:inline-block;width:4px;height:1em;margin-right:10px;
+  border-radius:3px;vertical-align:-.14em;background:var(--lc-primary);
+}
+.homePage .teamPanel {
+  border:1px solid var(--lc-stroke);background:var(--lc-surface);
+  border-radius:var(--lc-radius);padding:16px 18px;box-shadow:var(--lc-shadow);
+}
+.homePage .strip {
+  display:flex;gap:12px;align-items:center;max-width:100%;
+  padding:8px 2px 10px;overflow-x:auto;overscroll-behavior-inline:contain;
+  scrollbar-width:thin;white-space:nowrap;
+}
+.homePage .stripAll {padding:7px 10px;white-space:nowrap;font-weight:600}
+.homePage .avatar,.homePage .avatarLarge {
+  background:var(--lc-surface-raised);color:var(--lc-text);
+  border:2px solid var(--lc-stroke-strong);
+}
+.homePage .avatarButton {min-height:40px;min-width:40px}
+.homePage .avatarButton:hover .avatar {border-color:var(--lc-focus);box-shadow:0 0 0 2px var(--lc-stroke)}
+.homePage .popover {
+  background:var(--lc-surface);color:var(--lc-text);border-color:var(--lc-stroke);
+  box-shadow:var(--lc-shadow);
+}
+.homePage .profileText {color:var(--lc-text-secondary)}
+.homePage .profileText strong {color:var(--lc-text)}
+.homePage .feedSection {max-width:760px}
+.homePage .feed {display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:14px}
+.homePage .card {
+  position:relative;overflow:hidden;max-width:100%;min-width:0;
+  border:1px solid var(--lc-stroke);border-radius:var(--lc-radius);
+  background:var(--lc-surface);color:var(--lc-text);
+  box-shadow:var(--lc-shadow);padding:22px;
+}
+.homePage .card::before {
+  content:"";position:absolute;inset:0 auto auto 0;
+  width:28%;height:4px;background:var(--lc-primary);
+  border-radius:4px;
+}
+.homePage .card h3 {font-size:19px;line-height:1.4;margin:12px 0 10px}
+.homePage .card h3 a {color:var(--lc-text);text-decoration:none}
+.homePage .card h3 a:hover {color:var(--lc-link);text-decoration:underline}
+.homePage .cardMeta {display:flex;gap:6px 10px;flex-wrap:wrap;font-size:13px;line-height:1.5}
+.homePage .cardMeta span:first-child,.homePage .cardMeta span:nth-child(2) {
+  display:inline-flex;align-items:center;border-radius:999px;
+  padding:4px 10px;color:var(--lc-accent-ink);
+  background:var(--lc-accent-soft);border:1px solid var(--lc-stroke);
+}
+.homePage .cardMeta time {overflow-wrap:anywhere}
+.homePage .cardActions {border-color:var(--lc-stroke);gap:10px 16px}
+.homePage .card > button {margin-top:10px}
+.homePage [role="alert"],.homePage [role="status"] {
+  max-width:760px;padding:12px 14px;border:1px solid var(--lc-stroke);
+  background:var(--lc-surface);border-radius:10px;overflow-wrap:anywhere;
+}
+.homePage [role="alert"] {border-left:3px solid var(--lc-error);color:var(--lc-text)}
+.homePage [role="status"] {color:var(--lc-text-secondary)}
+.homePage [role="alert"] button {margin-left:8px}
+@media(max-width:899px) {.homeLayout {padding-inline:24px}}
+@media(max-width:680px) {
+  .homeLayout {padding:18px 16px 60px}
+  .homePage .hero {padding:18px 16px}
+  .homePage .teamPanel {padding:14px 12px}
+  .homePage .card {padding:16px}
+  .homePage .avatar,.homePage .avatarButton {width:36px;height:36px;min-width:36px;min-height:36px}
+  .homePage .actions {align-items:stretch}
+  .homePage .actions a {max-width:100%}
+  .homePage .branch input {flex:1 1 160px}
+  .homePage .feedSection {max-width:100%}
+}
+@media(max-width:375px) {
+  .homePage .cardMeta {gap:5px 8px}
+  .homePage .branch {align-items:stretch}
+  .homePage .branch label {width:100%}
+}
+@media(prefers-reduced-motion:reduce) {
+  .homePage *, .homePage *::before, .homePage *::after {transition-duration:.01ms;animation-duration:.01ms}
+}
