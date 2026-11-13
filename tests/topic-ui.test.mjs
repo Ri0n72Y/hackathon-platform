@@ -134,4 +134,6 @@ test('#31 OAuth report unknown result forces a deliberate confirmation button, p
   assert.match(html, /Keep this report/)
   assert.match(html, /disabled=""/)
   assert.match(html, /创建结果未知，请先核查/)
+  assert.match(html, /href="https:\\/\\/github.com\\/sample\\/repo\\/issues"/)
+  assert.match(html, /查看现有 Issues/)
 })
