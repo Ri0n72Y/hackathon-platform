@@ -137,3 +137,14 @@ test('#31 OAuth report unknown result forces a deliberate confirmation button, p
   assert.ok(html.includes('href="https://github.com/sample/repo/issues"'))
   assert.match(html, /查看现有 Issues/)
 })
+
+test('#31 B1-1 incomplete GitHub Search renders retryable failure, never an empty result', () => {
+  const html = render({ error: Object.assign(
+    new Error('GitHub Topic Search 结果不完整，请重试读取'),
+    { stage: 'topic-search', status: 502 }) })
+  assert.match(html, /TopicPage 读取失败/)
+  assert.match(html, /GitHub Topic Search 结果不完整/)
+  assert.match(html, /重新加载/)
+  assert.doesNotMatch(html, /当前可访问搜索范围没有符合配置的项目/)
+  assert.doesNotMatch(html, /1000 条可访问窗口已耗尽/)
+})
