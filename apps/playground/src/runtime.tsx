@@ -27,7 +27,11 @@ export async function startRuntime() {
     }
     if (!channelFixture) {
       const homePlugin = query.get('repoFixture') === '1'
-        ? createRepoHomePlugin((await import('./repo-fixture')).createRepoFixtureService(query))
+        ? createRepoHomePlugin((await import('./repo-fixture')).createRepoFixtureService(query), {
+          // Controlled visual fixture only; no site default, selector, or persistence.
+          theme: query.get('repoTheme') === 'dark' ? 'dark' :
+            query.get('repoTheme') === 'light' ? 'light' : undefined,
+        })
         : repoHome
       const homeFiber = ctx.plugin(homePlugin)
       fibers.push(homeFiber); await homeFiber
