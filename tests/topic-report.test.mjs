@@ -178,7 +178,7 @@ test('#31 OAuth rejects private repos, disabled Issues and absent user write per
     { fullName: 'other/repository' }]) {
     const s = setup(opts)
     const pre = await s.preflight()
-    assert.ok([403, 410].includes(pre.response.status))
+    assert.ok([403, 410, 502].includes(pre.response.status))
     assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
   }
 })
@@ -252,4 +252,61 @@ test('#31 secondary GitHub 403 with Retry-After is surfaced as 429 without write
   assert.equal(body.retryAfter, '45')
   assert.equal(body.outcomeUnknown, false)
   assert.equal(s.calls.filter(call => call.method === 'POST').length, 1)
+})
+
+test('#31 B1-2 App installation and user rights must intersect before an automatic report', async () => {
+  for (const [options, expected] of [
+    [{ appInstalled: false, canWrite: true }, 403],
+    [{ appInstalled: true, canWrite: false }, 403],
+    [{ appInstalled: true, userInstallMissing: true }, 403],
+    [{ appInstalled: true, userInstallWrongRepo: true }, 403],
+    [{ appInstalled: true, userInstallWrongId: true }, 403],
+    [{ appInstalled: true, private: true }, 403],
+  ]) {
+    const s = setup(options)
+    const pre = await s.preflight()
+    assert.equal(pre.response.status, expected)
+    assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
+    assert.ok(s.calls.some(c => c.path === ghRepo && !c.authorization))
+    if (!options.private) {
+      assert.ok(s.calls.some(c => c.path === ghRepo + '/installation' &&
+        /^Bearer ey/.test(c.authorization || '')), 'must verify current App JWT')
+    }
+  }
+  const authorized = setup()
+  const { data } = await authorized.preflight()
+  assert.equal(data.state, 'ready')
+  assert.equal((await authorized.submit(data.proof)).status, 201)
+  assert.ok(authorized.calls.some(c =>
+    c.path === '/user/installations/17/repositories' &&
+    c.authorization === 'Bearer user-alice'))
+})
+
+test('#31 B1-2 unavailable installation evidence fails closed without writing', async () => {
+  for (const [options, status] of [
+    [{ installationStatus: 503 }, 502],
+    [{ installationNetworkFailure: true }, 502],
+    [{ userInstallNetworkFailure: true }, 502],
+    [{ userInstallMalformed: true }, 502],
+    [{ userInstallStatus: 404 }, 403],
+    [{ userInstallStatus: 429 }, 429],
+  ]) {
+    const s = setup(options)
+    const pre = await s.preflight()
+    assert.equal(pre.response.status, status)
+    assert.notEqual(pre.data.state, 'ready')
+    assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
+  }
+})
+
+test('#31 B1-2 App installation is revalidated before POST after the preflight proof', async () => {
+  const s = setup()
+  const pre = await s.preflight()
+  assert.equal(pre.response.status, 200)
+  s.setAppInstalled(false)
+  const denied = await s.submit(pre.data.proof)
+  assert.equal(denied.status, 403)
+  assert.match((await denied.json()).error, /App 授权范围/)
+  assert.equal(s.calls.filter(c => c.method === 'POST').length, 0)
+  assert.equal(s.calls.filter(c => c.path === ghRepo + '/installation').length, 2)
 })
