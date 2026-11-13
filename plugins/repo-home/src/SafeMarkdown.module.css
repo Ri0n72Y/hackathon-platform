@@ -35,3 +35,29 @@
 .preview .video{padding:9px 12px}
 .preview .paragraph{margin:6px 0}
 .preview pre{max-height:100px;overflow:auto}
+
+/* Semantic tokens inherit only from the Repo Home fixture's scoped theme.
+   All other Markdown consumers retain the original CSS fallback colors. */
+.markdown {color:var(--lc-text-secondary,inherit);max-width:100%;min-width:0;overflow-wrap:anywhere}
+.markdown a {color:var(--lc-link,#195ca8)}
+.markdown :where(a):focus-visible {outline:3px solid var(--lc-focus,#195ca8);outline-offset:3px}
+.markdown pre {
+  box-sizing:border-box;max-width:100%;white-space:pre;overflow-x:auto;
+  background:var(--lc-surface-input,#f2f5f8);
+  border:1px solid var(--lc-stroke,#d5dce6);padding:14px;border-radius:10px;
+}
+.markdown code {background:var(--lc-surface-input,#edf1f4);color:var(--lc-text,inherit)}
+.markdown pre code {background:transparent}
+.markdown blockquote {
+  padding:8px 12px;border-left:3px solid var(--lc-primary,#b7c4d4);
+  background:var(--lc-surface-raised,transparent);color:var(--lc-text,#46546c);
+}
+.markdown hr {border:0;border-top:1px solid var(--lc-stroke,#d5dce6)}
+.media {max-width:100%;overflow-wrap:anywhere}
+.media img {max-width:100%;height:auto;object-fit:contain}
+.media figcaption {color:var(--lc-text-muted,#576579)}
+.video {background:var(--lc-surface-input,transparent);
+  border-color:var(--lc-stroke,#d5dce6);color:var(--lc-text-secondary,inherit);
+}
+.video a {color:var(--lc-link,#195ca8)}
+.invalid {color:var(--lc-error,#8f3543)}
