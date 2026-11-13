@@ -1,6 +1,6 @@
 # LabourChain UI/UX 设计地图（项目 · 成员 · Issue · Topic · Kanban）
 
-> **版本：v0.5 · 2026-11-13 · 五页面绳网 × 蓝紫 D2 布局方案已归档；不表示代码改造、TopicPage 合并或 D4 验收完成**
+> **版本：v0.6 · 2026-11-13 · 五页面 D2 版式 + Dark/Light 双主题设计；不表示代码、TopicPage 合并或用户 D4 已完成**
 >
 > **主任务：** [#2 仓库项目页面 / Board / Issue](https://github.com/Ri0n72Y/hackathon-platform/issues/2)  
 > **详细决策文本：** [UI/UX 设计基线](./LabourChain-Repo-Board-Issue-UX-Baseline.md)  
@@ -28,13 +28,13 @@
 
 ### 0.1 新增视觉决策与证据范围（2026-11-12）
 
-- ✅ **视觉方向 D1 已确认**：采用《绝区零》绳网（Inter-Knot）的深色模块化信息界面、胶囊标签及局部明亮黄强调，融合 Discord **偏蓝的蓝紫主色**，形成 LabourChain 自有视觉语言。
-- 🟡 **视觉规范 D2 初版**：色彩 Token、表面层级、链接/按钮/焦点及页面适配建议见 [视觉风格与配色规范](./LabourChain-Visual-Style-Guide.md)。具体色值可在真实页面对照后微调；不得复制游戏或 Discord 的受保护品牌素材。
+- ✅ **视觉方向 D1 已确认**：采用《绝区零》绳网（Inter-Knot）的模块化卡片、胶囊标签与少量明黄信号语言，融合 Discord **偏蓝的蓝紫主色**；**既有五页暗色稿为 Dark Mode，用户新增要求完整 Light Mode**，双主题共享布局。
+- 🟡 **双主题规范 D2 初版**：Dark 保留原定深色 Token；Light 增加冷白画布/白卡/深字/蓝紫链接、成功/错误/焦点等配对颜色。见 [Dark/Light 视觉风格与配色规范](./LabourChain-Visual-Style-Guide.md)。**两种模式的存在性已确定；Light 精确色值及切换机制为建议，待用户确认**。
 - ✅ **五页面 D2 主布局已确认**：产品方确认此前对话演示的 Repo Home、成员列表、成员登记、Issue 详情和独立 Topic Page 方案；详细桌面/手机结构及语义边界见 [五页面布局设计](./LabourChain-Five-Page-Layout-Design.md)。**具体像素值仍是 D2 建议，用户 D4 未验收**。
 - 🟡 **绳网布局证据**：游戏截图显示顶部胶囊分区及三列封面贴文，同人源码有瀑布流与详情响应式分区；LabourChain 采用其卡片信息层次，**Repo Feed 保留单列长文，TopicPage 使用封面项目卡**。证据与候选尺寸见 [布局研究](./LabourChain-InterKnot-Layout-Study.md)。
-- ⬜ **源码视觉落地 / 用户 D4 未完成**：`main` 仍有浅灰画布、白色卡片、传统深蓝链接；本轮仅静态核对，没有业务 CSS 修改、线上实测或 Vercel 权限访问。#51 用户验收继续由用户负责。
+- ⬜ **双主题源码落地 / 用户 D4 未完成**：既有浅色原型与新增 Light Token/状态并未统一，也没有完整 Dark。仅设计文档更新，没有业务 CSS 变更、线上实测或 Vercel 权限访问；#51 继续由用户实际验收。
 
-**与旧状态的关系：** 原设计主要确认信息层级和交互，色彩主题未统一；新视觉方向已正式确认，现有浅色源码是后续改造差距，不能作为新视觉验收完成的证据。
+**与旧状态的关系：** 原设计主要确认信息层级和交互；现已确定一致的绳网式五页结构 + Dark/Light 两套外观。旧的浅色源码不能直接视为新的 Light Mode 合格实现，也不能作为双主题验收完成的证据。
 
 ## 1. 页面与导航地图
 
@@ -70,7 +70,7 @@ flowchart TB
 
 | 页面 / 区域 | 已完成的设计决定 | 未完成的部分 | 现阶段判断 |
 | --- | --- | --- | --- |
-| **全站视觉风格** | 绳网式暗色界面与偏蓝蓝紫主色 D1 已确认；[五页 D2 布局](./LabourChain-Five-Page-Layout-Design.md)的主要信息结构已由产品方确认，[配色建议](./LabourChain-Visual-Style-Guide.md)与[布局来源](./LabourChain-InterKnot-Layout-Study.md)可追溯 | 精确尺寸及真实页面效果仍待校准；源码样式统一、窄屏/200% 与用户 D4 未完成 | ✅ D1／D2 主结构已确认；🟡 色值/尺寸建议；D4 未测 |
+| **全站视觉风格** | 绳网式五页主布局与偏蓝蓝紫主色已确认，明确 **Dark/Light 两套主题**；[双主题配色](./LabourChain-Visual-Style-Guide.md)和[五页版式](./LabourChain-Five-Page-Layout-Design.md)可追溯 | Light 颜色细节、主题切换入口/偏好机制、双主题样式落地、窄屏/200% 与用户 D4 尚待审阅/实施/验收 | ✅ 双模式与 D2 主结构已确认；🟡 Light 色值及机制候选；D4 未测 |
 | **仓库首页** `/{owner}/{repo}` | 已确认 D2：宽幅 Hero → 单行 Team 头像 → **单列文章式 Repo Feed**；Description 优先、Issue 第一楼 Markdown 与媒体外链保留原文层次；不含 Board | 色值/间距落地、移动端与真实 README/Markdown 显示；用户 D4 走查 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
 | **成员展示页** `/{owner}/{repo}/members` | 已确认 D2：资料卡桌面双列、窄屏单列，头像/姓名/角色/完整介绍/真实外链；按 JSON 顺序；有权限时可添加 | 真实资料、空态、窄屏和键盘/读屏走查 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
 | **成员登记页** `/{owner}/{repo}/members/register` | 已确认 D2：单列约 640px 表单、真实操作者/展示分支提示、字段旁错误与结果状态；Bot Commit/PR 既有规则不变 | 实际权限、Bot 结果、表单异常与窄屏/键盘用户验收 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
@@ -157,7 +157,7 @@ flowchart TB
 
 | 顺序 | 设计交付物 | 结束条件 |
 | --- | --- | --- |
-| **P0 · 当前新增** | **已确认五页 D2 主布局与暗色绳网 × 蓝紫规范**：按[五页设计](./LabourChain-Five-Page-Layout-Design.md)对照 Repo Home、成员列表、成员登记、Issue 详情和 TopicPage；保留业务语义与接口约束 | 五页布局规范已记录；实际 CSS/视觉效果仍待独立实施与用户浏览器 D4 |
+| **P0 · 当前新增** | **已确认五页 D2 主布局与 Dark/Light 双主题需求**：按[五页设计](./LabourChain-Five-Page-Layout-Design.md)和[成套 Token](./LabourChain-Visual-Style-Guide.md)对照所有页面；保留业务语义及接口约束 | 两套颜色/状态实现、主题切换入口和持久性待产品/工程确认；CSS 与用户 D4 未完成 |
 | **P1 · 原有** | **Repo 项目主页与团队成员管理设计交付**：单行头像 Hover、`/members`、`/members/register` 与 Issue 第一楼 Markdown/扩展格式；看板交互设计保留但实施延后 | 成员资料来源、表单校验、Bot/操作者归属、Commit/PR 状态及窄屏/键盘行为均有明确契约；技术权限缺口单独标注 |
 | **P2** | 仓库首页完整低保真（精简 README / 成员详情 / Repo 动态；不含 Board） | 成员信息与动态正文层级清楚，首页不依赖看板即可理解项目 |
 | **P3** | 独立 Issue 完整低保真（讨论/劳动、左右侧栏、Markdown 输入） | 首访/回访、评论和劳动登记的主状态都能走通 |
