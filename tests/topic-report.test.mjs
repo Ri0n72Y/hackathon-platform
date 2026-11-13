@@ -17,6 +17,7 @@ function setup(opts = {}) {
   const calls = []
   let now = 1_800_000_000_000
   let appInstalled = opts.appInstalled !== false
+  let appIssuesPermission = opts.appIssuesPermission ?? 'write'
   const fetcher = async (url, init = {}) => {
     const path = new URL(url).pathname
     const authorization = init.headers?.Authorization
@@ -39,6 +40,22 @@ function setup(opts = {}) {
       if (opts.installationStatus) return Response.json({}, { status: opts.installationStatus })
       if (!appInstalled) return Response.json({}, { status: 404 })
       return Response.json({ id: 17, account: { login: 'sample' }, suspended_at: null })
+    }
+    if (path === '/app/installations/17') {
+      assert.match(authorization, /^Bearer ey/, 'only App JWT may inspect installation grants')
+      assert.equal(method, 'GET')
+      if (opts.appPermissionNetworkFailure) throw Error('App permission read timeout')
+      if (opts.appPermissionStatus) return Response.json({}, { status: opts.appPermissionStatus })
+      if (opts.appPermissionInvalidJson) return new Response('invalid-json', { status: 200 })
+      return Response.json({
+        id: opts.appPermissionWrongId ? 18 : 17,
+        account: { login: opts.appPermissionWrongAccount ? 'other' : 'sample' },
+        suspended_at: opts.appPermissionSuspended ? '2026-11-13T00:00:00Z' : null,
+        ...(opts.appPermissionsMissing ? {} : {
+          permissions: opts.appPermissionsMalformed ? 'invalid' :
+            { issues: appIssuesPermission },
+        }),
+      })
     }
     assert.ok(authorization?.startsWith('Bearer user-'), 'only user token reads and writes')
     assert.ok(!authorization.includes('bot'), 'must not use bot token')
@@ -106,7 +123,8 @@ function setup(opts = {}) {
     }, body: JSON.stringify(payload) }))
   }
   return { endpoint, calls, preflight, submit, setNow: value => { now = value },
-    setAppInstalled: value => { appInstalled = value } }
+    setAppInstalled: value => { appInstalled = value },
+    setAppIssuesPermission: value => { appIssuesPermission = value } }
 }
 
 test('#31 OAuth Topic report uses only current user token and creates one verified Issue', async () => {
