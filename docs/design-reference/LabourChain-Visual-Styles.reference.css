@@ -146,8 +146,9 @@
   color: var(--lc-text); text-decoration: none; font: inherit;
 }
 .primaryAction:disabled { opacity: .6; cursor: not-allowed; }
-/* For an <a> with .primaryAction, override any generic link rule
-   using an explicit component-scoped specificity, not global !important. */
+/* Keep <a> visual actions legible despite more specific generic .page a. */
+.page a.primaryAction { color: var(--lc-on-primary); }
+.page a.secondaryAction { color: var(--lc-text); }
 
 /* TeamStrip: existing single line and anchored popover remain intact. */
 .teamPanel {
