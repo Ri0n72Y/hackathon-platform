@@ -19,7 +19,9 @@
 - POST 前以 User Access Token 再次读取 /repos/{owner}/{repo}，严格确认 full_name、private=false、has_issues=true、权限 triage/push/maintain/admin 中至少一项为真。没有 Installation 证明要求，也绝不回退 App/Bot Token。
 - 完全由服务端在 github.com API 下构造 /repos/{owner}/{repo}/issues 的 POST，Payload 仅 {title,body}。可疑 Token、Cookie、Bearer、环境变量字样的报告内容被拒绝。服务端不输出凭证、请求头、原始 GitHub 错误正文。
 - GitHub 201 只有在真实 Issue number 与 https://github.com/{owner}/{repo}/issues/{number} 严格匹配时，才显示成功链接。401/403/404/410/422/429 明确错误；503、网络超时或 201 无法核实返回 outcomeUnknown，保留草稿，禁用重复提交，用户必须先到 GitHub 核查并明确点击“已核查，允许再次提交”，系统才重新验证权限，且**不会自动重放 POST**。
-- GitHub App User Access Token 仅覆盖当前用户与 App 授权仓库的交集。对未安装 App 的外部公开 Topic 源仓库，即使用户个人具有写入权限，自动报告功能仍可能受平台权限边界阻断。Reviewer B1-2 已请求 Lead/用户决定业务契约；本轮不改变 OAuth、Installation 或写入权限。无法写入时明确拒绝并保留 GitHub 手动创建入口，不宣称外部仓库自动写入普遍可用。
+- GitHub App User Access Token 仅覆盖当前用户与 App 授权仓库的交集。依照 [Lead 已确认的 B1-2 降级策略](https://github.com/Ri0n72Y/hackathon-platform/issues/31#issuecomment-6848294203)，自动 Issue 报告必须对同一目标同时满足当前 App 授权安装与当前 OAuth 用户的 Issues 创建权限；其他公开 TopicPage 仍可匿名只读，报告走手动 GitHub Issue 入口。
+- GET 预检与 POST 前均复用 `resolveInstalledRepository`：用 App JWT（仅安装核验）确认匹配的公开仓库、当前 App Installation 与仓库 id；再用当前 User Access Token 读取 `/user/installations/{id}/repositories`（每页100，最多10页），要求同一 id、full_name、公开属性精确匹配；最后单独检查当前用户仓库的 Issues 开关与 triage/push/maintain/admin 权限。安装/交集列表不可用、被拒绝、响应异常、超出核验上限一律 fail-closed；任何写入只由 User Token POST，绝不使用 JWT/Bot 代写。
+- 受控 Node/HTTP Mock 现在实际模拟匿名公开仓库元数据、签名 App JWT 安装查询、User Token 安装仓库列表、用户仓库权限及最终 Issue POST，覆盖 App 已装/未装 × 用户可写/不可写、私有、安装证明异常/429/网络失败、预检后安装撤销、已有目标 Proof 防篡改与提交结果未知。前端同时增加“查看现有 Issues”链接与同步 in-flight 防重复提交保护。
 
 ## 独立受控 Fixture 与测试
 - 在 Playground 中访问 /topic/sample/repo?topicFixture=1&topicCase=ready|empty|window|rate-limit|report-fail|report-success|report-unknown&fixtureAuth=1。
