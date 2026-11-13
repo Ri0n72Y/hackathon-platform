@@ -1,23 +1,65 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { randomBytes } from 'node:crypto'
+import { randomBytes, generateKeyPairSync } from 'node:crypto'
 import { createTopicReportEndpoint } from '../api/_topic-report.mjs'
+import { resolveInstalledRepository } from '../api/_installation-probe.mjs'
 
 const SITE = 'https://topic.test'
 const api = SITE + '/api/topic-report'
 const ghRepo = '/repos/sample/repo'
+const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+const appEnv = {
+  GITHUB_APP_ID: '123456',
+  GITHUB_APP_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+}
 function setup(opts = {}) {
   const config = { origin: SITE, key: randomBytes(32) }
   const calls = []
   let now = 1_800_000_000_000
+  let appInstalled = opts.appInstalled !== false
   const fetcher = async (url, init = {}) => {
     const path = new URL(url).pathname
     const authorization = init.headers?.Authorization
     const method = init.method || 'GET'
     calls.push({ path, method, authorization, body: init.body || null,
       cookie: init.headers?.cookie })
-    assert.ok(authorization.startsWith('Bearer user-'), 'only user access token')
+    const metadata = {
+      id: 23, full_name: opts.fullName || 'sample/repo',
+      private: opts.private === true,
+      owner: { login: 'sample', type: 'User' },
+    }
+    if (path === ghRepo && !authorization) {
+      assert.equal(method, 'GET')
+      return Response.json(metadata)
+    }
+    if (path === ghRepo + '/installation') {
+      assert.match(authorization, /^Bearer ey/, 'App JWT only for installation verification')
+      assert.equal(method, 'GET')
+      if (opts.installationNetworkFailure) throw Error('App installation network failure')
+      if (opts.installationStatus) return Response.json({}, { status: opts.installationStatus })
+      if (!appInstalled) return Response.json({}, { status: 404 })
+      return Response.json({ id: 17, account: { login: 'sample' }, suspended_at: null })
+    }
+    assert.ok(authorization?.startsWith('Bearer user-'), 'only user token reads and writes')
     assert.ok(!authorization.includes('bot'), 'must not use bot token')
+    if (path === '/user/installations/17/repositories') {
+      throw Error('Installation list must include explicit pagination')
+    }
+    if (path === '/user/installations/17/repositories' ||
+        path === '/user/installations/17/repositories/') throw Error('Unexpected list route')
+    if (path.startsWith('/user/installations/17/repositories')) {
+      assert.equal(method, 'GET')
+      const page = Number(new URL(url).searchParams.get('page'))
+      assert.equal(page, 1)
+      if (opts.userInstallNetworkFailure) throw Error('user installation list timeout')
+      if (opts.userInstallStatus) return Response.json({}, { status: opts.userInstallStatus })
+      if (opts.userInstallMalformed) return Response.json({ repositories: null })
+      const repositories = opts.userInstallMissing ? [] :
+        [{ id: opts.userInstallWrongId ? 24 : 23,
+          full_name: opts.userInstallWrongRepo ? 'other/repo' : 'sample/repo',
+          private: false }]
+      return Response.json({ total_count: repositories.length, repositories })
+    }
     if (path.startsWith('/repos/')) {
       if (path.endsWith('/issues')) {
         assert.equal(method, 'POST')
@@ -35,8 +77,7 @@ function setup(opts = {}) {
       if (opts.repoStatus) return Response.json({ message: 'GitHub error' },
         { status: opts.repoStatus })
       return Response.json({
-        full_name: opts.fullName || 'sample/repo', private: opts.private === true,
-        has_issues: opts.hasIssues !== false,
+        ...metadata, has_issues: opts.hasIssues !== false,
         ...(opts.permissionsMissing ? {} : { permissions: {
           triage: opts.canWrite !== false, push: false, maintain: false, admin: false,
         } }),
@@ -51,7 +92,9 @@ function setup(opts = {}) {
     return null
   }
   const endpoint = createTopicReportEndpoint({ fetcher,
-    sessionReader, configReader: () => config, clock: () => now })
+    sessionReader, configReader: () => config, clock: () => now,
+    installationResolver: args => resolveInstalledRepository({ ...args, env: appEnv }),
+  })
   const preflight = async (person = 'alice', owner = 'sample', repo = 'repo') => {
     const response = await endpoint.fetch(new Request(
       api + '?owner=' + owner + '&repo=' + repo,
@@ -67,7 +110,8 @@ function setup(opts = {}) {
       referer: SITE + '/topic/sample/repo', cookie: 'session=alice', ...headers,
     }, body: JSON.stringify(payload) }))
   }
-  return { endpoint, calls, preflight, submit, setNow: value => { now = value } }
+  return { endpoint, calls, preflight, submit, setNow: value => { now = value },
+    setAppInstalled: value => { appInstalled = value } }
 }
 
 test('#31 OAuth Topic report uses only current user token and creates one verified Issue', async () => {
