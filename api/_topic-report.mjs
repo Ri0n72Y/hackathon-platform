@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { oauthConfig, readSession, oauthHeaders, seal, unseal } from './_oauth.mjs'
 import { validTopicRepository } from '../plugins/topic-page/src/domain.mjs'
+import { resolveInstalledRepository, ProbeError } from './_installation-probe.mjs'
 
 const GH = 'https://api.github.com'
 const MAX_BYTES = 128 * 1024
@@ -52,6 +53,68 @@ async function userGithub(fetcher, path, token, init = {}) {
     signal: AbortSignal.timeout(10000),
   })
 }
+/** @summary Verify the exact public target is accessible to this App and this OAuth user. */
+async function allowedInstallation({ fetcher, token, owner, repo, installationResolver }) {
+  let installation
+  try {
+    // The resolver uses the current App JWT solely to verify installation access.
+    // It never produces a token suitable for a report write.
+    installation = await installationResolver({ owner, repo, fetcher })
+  } catch (error) {
+    if (error instanceof ProbeError && [403, 404].includes(error.status)) {
+      return { error: reply({ state: 'rejected', stage: 'installation',
+        error: '此公开仓库不在当前 GitHub App 授权范围内；请在 GitHub 手动提交 Issue' }, 403) }
+    }
+    return { error: reply({ state: 'rejected', stage: 'installation',
+      error: error instanceof ProbeError && error.status === 429 ?
+        'GitHub App 安装权限核查遇到限流，请稍后重试' :
+        'GitHub App 安装权限核查暂不可用，无法安全创建 Issue' },
+      error instanceof ProbeError && error.status === 429 ? 429 : 502) }
+  }
+  if (!Number.isSafeInteger(installation?.installationId) ||
+      installation.installationId <= 0 ||
+      !Number.isSafeInteger(installation?.repositoryId) ||
+      installation.repositoryId <= 0) {
+    return { error: validationError('GitHub App 安装授权证明无效', 502) }
+  }
+  const expected = (owner + '/' + repo).toLowerCase()
+  const id = installation.installationId
+  // GitHub App user tokens are scoped to the intersection of App installation
+  // access and user access. Check the actual user-visible installation list.
+  for (let page = 1; page <= 10; page++) {
+    let response
+    try {
+      response = await userGithub(fetcher, '/user/installations/' + id +
+        '/repositories?per_page=100&page=' + page, token)
+    } catch {
+      return { error: reply({ state: 'rejected', stage: 'installation',
+        error: 'GitHub 用户与 App 权限交集核查失败，请稍后重试' }, 502) }
+    }
+    if (response.status === 404) {
+      return { error: reply({ state: 'rejected', stage: 'installation',
+        error: '当前用户无权通过此 App 访问目标仓库；可在 GitHub 手动提交' }, 403) }
+    }
+    if (!response.ok) return { error: githubFailure(response, 'installation') }
+    let data
+    try { data = await response.json() } catch {
+      return { error: validationError('GitHub 安装仓库列表响应不可解析', 502) }
+    }
+    if (!Number.isSafeInteger(data?.total_count) || data.total_count < 0 ||
+        !Array.isArray(data.repositories) || data.repositories.length > 100) {
+      return { error: validationError('GitHub 安装仓库列表响应不完整', 502) }
+    }
+    if (data.repositories.some(item =>
+      item?.id === installation.repositoryId &&
+      item?.private === false &&
+      item?.full_name?.toLowerCase() === expected)) return { authorized: true }
+    if (data.repositories.length < 100 && page * 100 >= data.total_count) {
+      return { error: reply({ state: 'rejected', stage: 'installation',
+        error: '目标仓库不在当前用户可访问的 App 安装仓库列表中；请在 GitHub 手动提交' }, 403) }
+    }
+  }
+  return { error: validationError('GitHub 安装仓库列表超出安全核验上限', 502) }
+}
+
 async function allowedRepository({ fetcher, token, owner, repo }) {
   let response
   try { response = await userGithub(fetcher, targetPath(owner, repo), token) }
@@ -93,7 +156,7 @@ function validIssueCreated(data, owner, repo) {
 /** @summary Let one GitHub OAuth user explicitly confirm a Topic error Issue without an App/Bot write fallback. */
 export function createTopicReportEndpoint({
   fetcher = fetch, configReader = oauthConfig, sessionReader = readSession,
-  clock = Date.now,
+  clock = Date.now, installationResolver = resolveInstalledRepository,
 } = {}) {
   return {
     async fetch(request) {
@@ -179,6 +242,10 @@ export function createTopicReportEndpoint({
         }
       }
 
+      const installed = await allowedInstallation({
+        fetcher, token: session.token, owner, repo, installationResolver,
+      })
+      if (installed.error) return installed.error
       const access = await allowedRepository({ fetcher, token: session.token, owner, repo })
       if (access.error) return access.error
       if (request.method === 'GET') {
