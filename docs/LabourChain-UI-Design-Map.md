@@ -1,6 +1,6 @@
-# LabourChain UI/UX 设计地图（仓库首页 · 团队成员 · Kanban · Issue）
+# LabourChain UI/UX 设计地图（项目 · 成员 · Issue · Topic · Kanban）
 
-> **版本：v0.4 · 2026-11-12 · 新增绳网式暗色 × Discord 偏蓝视觉方向及当前源码视觉审查；不表示 UI 实现或 D4 验收完成**
+> **版本：v0.5 · 2026-11-13 · 五页面绳网 × 蓝紫 D2 布局方案已归档；不表示代码改造、TopicPage 合并或 D4 验收完成**
 >
 > **主任务：** [#2 仓库项目页面 / Board / Issue](https://github.com/Ri0n72Y/hackathon-platform/issues/2)  
 > **详细决策文本：** [UI/UX 设计基线](./LabourChain-Repo-Board-Issue-UX-Baseline.md)  
@@ -30,7 +30,8 @@
 
 - ✅ **视觉方向 D1 已确认**：采用《绝区零》绳网（Inter-Knot）的深色模块化信息界面、胶囊标签及局部明亮黄强调，融合 Discord **偏蓝的蓝紫主色**，形成 LabourChain 自有视觉语言。
 - 🟡 **视觉规范 D2 初版**：色彩 Token、表面层级、链接/按钮/焦点及页面适配建议见 [视觉风格与配色规范](./LabourChain-Visual-Style-Guide.md)。具体色值可在真实页面对照后微调；不得复制游戏或 Discord 的受保护品牌素材。
-- 🟡 **绳网布局 D2 研究**：游戏截图显示顶部胶囊分区及三列封面贴文，同人源码有瀑布流与详情响应式分区；LabourChain 采用对应的信息层级与卡片语言，**当前 Repo Feed 仍为单列长文**。来源与候选布局参数见 [绳网布局研究](./LabourChain-InterKnot-Layout-Study.md)，D4 未测。
+- ✅ **五页面 D2 主布局已确认**：产品方确认此前对话演示的 Repo Home、成员列表、成员登记、Issue 详情和独立 Topic Page 方案；详细桌面/手机结构及语义边界见 [五页面布局设计](./LabourChain-Five-Page-Layout-Design.md)。**具体像素值仍是 D2 建议，用户 D4 未验收**。
+- 🟡 **绳网布局证据**：游戏截图显示顶部胶囊分区及三列封面贴文，同人源码有瀑布流与详情响应式分区；LabourChain 采用其卡片信息层次，**Repo Feed 保留单列长文，TopicPage 使用封面项目卡**。证据与候选尺寸见 [布局研究](./LabourChain-InterKnot-Layout-Study.md)。
 - ⬜ **源码视觉落地 / 用户 D4 未完成**：`main` 仍有浅灰画布、白色卡片、传统深蓝链接；本轮仅静态核对，没有业务 CSS 修改、线上实测或 Vercel 权限访问。#51 用户验收继续由用户负责。
 
 **与旧状态的关系：** 原设计主要确认信息层级和交互，色彩主题未统一；新视觉方向已正式确认，现有浅色源码是后续改造差距，不能作为新视觉验收完成的证据。
@@ -45,11 +46,13 @@ flowchart TB
     REGISTER["成员登记页 /{owner}/{repo}/members/register<br/>简单表单 · Bot Commit/PR"]
     KANBAN["Kanban 专注页 /{owner}/{repo}/kanban<br/>完整看板 · URL 筛选排序"]
     ISSUE["Issue 详情 /{owner}/{repo}/issues/{number}<br/>社区讨论优先 · 独立 URL"]
+    TOPIC["Topic Page /topic/{owner}/{repo}/<br/>公开主题横卡 · Flex 项目卡；#31 独立模块"]
     TABS["讨论 / 劳动历史 Tab"]
     SIDE["左：项目导航 / 右：任务属性<br/>默认均隐藏"]
     CHANNEL["Channel / 频道（#20 另行探索）"]
     AI["AI 摘要 / Agent（未来实验）"]
     ROOT --> HOME
+    ROOT -.->|"独立 Topic 路由（#31）"| TOPIC
     HOME --> MEMBERS
     MEMBERS --> REGISTER
     HOME -.->|"后续阶段：进入独立看板"| KANBAN
@@ -61,21 +64,22 @@ flowchart TB
     ISSUE -.-> AI
 ```
 
-**路由约束已确认**：`/` 平台入口、`/{owner}/{repo}` 仓库首页、`/{owner}/{repo}/members` 成员展示页、`/{owner}/{repo}/members/register` 成员登记页、`/{owner}/{repo}/kanban?filter=…&sort=…` 独立看板页（后置实现）、`/{owner}/{repo}/issues/{number}` 详情。第一版项目主页不展示看板，也不提供首页 Board 预览。独立看板实现后，其 URL 筛选/排序应可分享、可刷新；独立 Issue 的直接访问与 Back/Forward 需成立。具体 query 参数 schema 尚待定稿。
+**路由约束已确认**：`/` 平台入口、`/{owner}/{repo}` 仓库首页、`/{owner}/{repo}/members` 成员展示页、`/{owner}/{repo}/members/register` 成员登记页、`/{owner}/{repo}/kanban?filter=…&sort=…` 独立看板页（后置实现）、`/{owner}/{repo}/issues/{number}` 详情。**另有 #31 独立公开 Topic Page**：`/topic/{owner}/{repo}/`，不核验 Installation；不等同 #3 的平台级已接入 Topic 信息流。第一版项目主页不展示看板，也不提供首页 Board 预览。独立看板实现后，其 URL 筛选/排序应可分享、可刷新；独立 Issue 的直接访问与 Back/Forward 需成立。具体 query 参数 schema 尚待定稿。
 
 ## 2. 分页面设计进度
 
 | 页面 / 区域 | 已完成的设计决定 | 未完成的部分 | 现阶段判断 |
 | --- | --- | --- | --- |
-| **全站视觉风格** | 2026-11-12 确认「绳网式暗色信息界面＋Discord 偏蓝蓝紫主色」；配色见[视觉规范](./LabourChain-Visual-Style-Guide.md)，游戏截图/社区源码的布局提取及页面候选见[布局研究](./LabourChain-InterKnot-Layout-Study.md) | D2 版式需产品方确认；样式落地、窄屏/200% 和用户浏览器 D4 尚未完成 | ✅ D1 已确认；🟡 D2 配色/布局候选；D4 未测 |
-| **仓库首页** `/{owner}/{repo}` | 单仓库首页；Title/精简 README、单行成员头像 Hover 卡片、Repo 动态；动态正文来自所展示 Issue 的第一楼，按 Markdown 与平台扩展格式（含视频外链）渲染；第一版不显示 Board | README 来源/折叠策略、Markdown/视频外链扩展边界、主页整体响应式与真实浏览器走查 | 🟡 D1/D2 已有；成员区 D3 已明确；整体 D4 未完成 |
-| **成员展示页** `/{owner}/{repo}/members` | 展示完整成员资料；两列桌面/单列窄屏；按 JSON 顺序；GitHub 账号可选；有权限者可添加 | 真实数据/空态、窄屏与键盘/屏幕阅读器走查 | 🟡 D1–D3 已明确，D4 未完成 |
-| **成员登记页** `/{owner}/{repo}/members/register` | 简单单列表单；当前登录操作者与展示分支明确；Bot Commit/PR；提交记录保留操作者；冲突/权限/等待合并状态明确 | GitHub App Contents/PR 权限与真实 Bot 写入；完整表单原型、失败恢复与窄屏/键盘走查 | 🟡 D1–D3 已明确；技术权限和 D4 未验证 |
+| **全站视觉风格** | 绳网式暗色界面与偏蓝蓝紫主色 D1 已确认；[五页 D2 布局](./LabourChain-Five-Page-Layout-Design.md)的主要信息结构已由产品方确认，[配色建议](./LabourChain-Visual-Style-Guide.md)与[布局来源](./LabourChain-InterKnot-Layout-Study.md)可追溯 | 精确尺寸及真实页面效果仍待校准；源码样式统一、窄屏/200% 与用户 D4 未完成 | ✅ D1／D2 主结构已确认；🟡 色值/尺寸建议；D4 未测 |
+| **仓库首页** `/{owner}/{repo}` | 已确认 D2：宽幅 Hero → 单行 Team 头像 → **单列文章式 Repo Feed**；Description 优先、Issue 第一楼 Markdown 与媒体外链保留原文层次；不含 Board | 色值/间距落地、移动端与真实 README/Markdown 显示；用户 D4 走查 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
+| **成员展示页** `/{owner}/{repo}/members` | 已确认 D2：资料卡桌面双列、窄屏单列，头像/姓名/角色/完整介绍/真实外链；按 JSON 顺序；有权限时可添加 | 真实资料、空态、窄屏和键盘/读屏走查 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
+| **成员登记页** `/{owner}/{repo}/members/register` | 已确认 D2：单列约 640px 表单、真实操作者/展示分支提示、字段旁错误与结果状态；Bot Commit/PR 既有规则不变 | 实际权限、Bot 结果、表单异常与窄屏/键盘用户验收 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
 | **独立 Kanban 页面（后置）** `/{owner}/{repo}/kanban` | 保留既有看板、CardItem、状态标签、筛选排序与操作设计；不嵌入项目主页；后续阶段单独实现 | **工具栏布局、详细 CardItem 信息密度、完整工作流、桌面/触屏 DnD 与大量卡片的滚动/分页** | ⏸ 设计保留，实施后置 |
 | **Kanban 设计保留说明** | #23 的 Namespace/最大标签、跨列只改受管标签、同列清空 Filter 后临时排序、团队共享视图和归档过滤均作为**后续实现的有效设计输入**，仅开发优先级调整 | 复核配置 `views` 格式与操作细节，不在当前 MVP 首页提前实现 | ⏸ |
 
-| **Issue 独立详情** | 点击卡片更新 URL；社区讨论优先；左右侧栏默认隐藏且可独立展开；标题/成果摘要/话题背景；下方「讨论/劳动历史」双 Tab；右侧任务属性 | 真实信息层级、长正文展示、不同屏宽面板行为、跨 Tab 草稿保持、详情页状态反馈 | 🟡 D1 完成、D2 初稿、D3 部分、D4 未完成 |
-| **仓库动态区** | 在第一版项目主页展示所展示 Issue 的第一楼正文，按 Markdown 与平台扩展格式渲染 | 更新时间、分页/刷新、摘要与跳转、加载和错误态 | 🟡 定位确认，其余待设计 |
+| **Issue 独立详情** | 已确认 D2：标题/正文先行、真实成果摘要（有则显示）、下方讨论/劳动历史双 Tab、左右辅助侧栏默认隐藏按需展开；保留独立 URL | 真实数据、长正文与窄屏面板行为、草稿、权限与用户 D4 | ✅ D2 主布局已确认；D3 部分；D4 未测 |
+| **仓库动态区** | 单列 Markdown 长文卡片，Issue 标题高于正文 H1，清晰来源/状态/展开/详情入口；保留现有分页/刷新规则 | 实际长文、媒体、加载/错误和窄屏用户复核 | ✅ D2 主布局已确认；D4 未测 |
+| **Topic Page · #31** `/topic/{owner}/{repo}/` | 已确认 D2：真实主办方封面优先的紧凑横向主题卡 + Flex 自适应项目卡片流；README 标题/正文，底部可选 email/datetime；独立公开 Topic 聚合，不宣称已接入平台 | PR #64 尚未合并；实际 Cover/白名单/分页/错误及写入权限、手机与用户 D4 待验收 | ✅ D2 主布局已确认；D4 未测 |
 | **频道 / 新成员参与** | 与 Board/Issue 的数据关系受现有 `channel:*` 约束 | 频道路由、视图、参与路径及视觉结构 | ⏸ 转 #20；不抢占本轮工作 |
 | **AI 摘要/Agent** | 未来产品方向与实验边界已记录 | 交互和技术可行性、BYOK 安全、上下文选择与面板共存 | ⏸ 未来特色；不纳入当前 MVP |
 | **跨仓库聚合与 Fork 社区** | 长期愿景已单独记录 | 不在本轮细化 | ⏸ 不属于单仓库 UI 交付 |
@@ -133,7 +137,7 @@ flowchart TB
 ### 尚未完成：可交付的细节设计与验证
 
 - [ ] Kanban **专注页**详细视觉/布局、信息密度和工具栏。
-- [ ] 新视觉 Token 的页面落点：画布、Hero/Team/Feed、成员资料与登记、Issue 详情及输入状态；按用户确认的暗色蓝紫基线复核真实显示。
+- [ ] 新视觉 Token 的页面落点：画布、Hero/Team/Feed、成员资料与登记、Issue 详情、Topic Page 及输入状态；按用户确认的暗色蓝紫基线复核真实显示。
 - [ ] 首页 README 与 Issue 正文 Markdown/扩展格式渲染，以及移动端与异常态；不包含 Board。
 - [ ] Team Hover 卡片、成员页与登记表单的真实组件/窄屏/键盘/读屏走查；Bot Contents/PR 权限和 GitHub 写入链路必须真实验证。
 - [ ] Issue **完整页面**（讨论流、劳动历史、属性侧栏）在桌面和窄屏上的可操作原型。
@@ -153,7 +157,7 @@ flowchart TB
 
 | 顺序 | 设计交付物 | 结束条件 |
 | --- | --- | --- |
-| **P0 · 当前新增** | **暗色绳网 × 蓝紫视觉规范与界面对照**：用已确认的 D1 和已记录的 D2 Token 比对主页、成员、Feed、Issue 详情与入口；保留既有功能交互 | 各页面视觉差距有清单；实施后由用户完成实际屏幕审阅，未测试项如实标注 |
+| **P0 · 当前新增** | **已确认五页 D2 主布局与暗色绳网 × 蓝紫规范**：按[五页设计](./LabourChain-Five-Page-Layout-Design.md)对照 Repo Home、成员列表、成员登记、Issue 详情和 TopicPage；保留业务语义与接口约束 | 五页布局规范已记录；实际 CSS/视觉效果仍待独立实施与用户浏览器 D4 |
 | **P1 · 原有** | **Repo 项目主页与团队成员管理设计交付**：单行头像 Hover、`/members`、`/members/register` 与 Issue 第一楼 Markdown/扩展格式；看板交互设计保留但实施延后 | 成员资料来源、表单校验、Bot/操作者归属、Commit/PR 状态及窄屏/键盘行为均有明确契约；技术权限缺口单独标注 |
 | **P2** | 仓库首页完整低保真（精简 README / 成员详情 / Repo 动态；不含 Board） | 成员信息与动态正文层级清楚，首页不依赖看板即可理解项目 |
 | **P3** | 独立 Issue 完整低保真（讨论/劳动、左右侧栏、Markdown 输入） | 首访/回访、评论和劳动登记的主状态都能走通 |
