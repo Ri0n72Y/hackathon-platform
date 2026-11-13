@@ -1,6 +1,6 @@
 # LabourChain 仓库首页 / Kanban / Issue UI·UX 设计基线
 
-> **设计状态导航：** [UI/UX 设计地图（已完成 / 未完成 / 下一阶段）](./LabourChain-UI-Design-Map.md)。本文件负责保存已确认的语义与交互规则；设计地图负责追踪各页面的详细设计与验证状态。
+> **设计状态导航：** [UI/UX 设计地图](./LabourChain-UI-Design-Map.md)。本文件负责保存已确认的语义与交互规则；跨项目主页/成员/Issue 与独立 Topic Page（#31）的**五页 D2 布局**见 [五页面布局设计](./LabourChain-Five-Page-Layout-Design.md)，设计地图负责追踪各页面的验证状态。Topic Page 的独立数据/授权规则以 #31 为准，不由本 #2 基线替代。
 
 > **Discovery 决策快照 v0.1｜2026-10-26；MVP 范围原则更新｜2026-10-29；PR #23 选择性同步｜2026-11-05；团队成员展示与登记 D3 收敛｜2026-11-07；产品视觉方向确认｜2026-11-12**
 >
