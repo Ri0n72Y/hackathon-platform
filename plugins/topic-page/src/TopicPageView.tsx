@@ -21,8 +21,9 @@ export type TopicPageViewProps = {
 
 /** @summary Render Topic projects, explicit search bounds and an editable report without business fetches. */
 export default function TopicPageView(props: TopicPageViewProps) {
-  const base = 'https://github.com/' + encodeURIComponent(props.owner) + '/' +
-    encodeURIComponent(props.repo) + '/issues/new'
+  const githubIssuesUrl = 'https://github.com/' + encodeURIComponent(props.owner) + '/' +
+    encodeURIComponent(props.repo) + '/issues'
+  const base = githubIssuesUrl + '/new'
   const login = '/api/github-login?return_to=' + encodeURIComponent(
     '/topic/' + props.owner + '/' + props.repo)
   return <div className={styles.page}>
@@ -50,7 +51,8 @@ export default function TopicPageView(props: TopicPageViewProps) {
       title={props.report.title} body={props.report.body}
       pending={props.report.pending} checking={props.report.checking}
       uncertain={props.report.uncertain} message={props.report.message}
-      writeEnabled={props.writeEnabled} githubNewIssueUrl={base} loginUrl={login}
+      writeEnabled={props.writeEnabled} githubNewIssueUrl={base}
+      githubIssuesUrl={githubIssuesUrl} loginUrl={login}
       onTitleChange={props.onReportTitleChange} onBodyChange={props.onReportBodyChange}
       onCancel={props.onCloseReport} onConfirmUnknown={props.onConfirmUnknown}
       onSubmit={props.onSubmitReport}/>}
