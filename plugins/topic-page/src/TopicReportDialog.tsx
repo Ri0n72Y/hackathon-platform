@@ -4,7 +4,7 @@ import styles from './topic-page.module.css'
 export type TopicReportDialogProps = {
   title: string; body: string; pending: boolean; checking: boolean;
   uncertain: boolean; message: string;
-  writeEnabled: boolean; githubNewIssueUrl: string; loginUrl: string;
+  writeEnabled: boolean; githubNewIssueUrl: string; githubIssuesUrl: string; loginUrl: string;
   onTitleChange(value: string): void; onBodyChange(value: string): void;
   onCancel(): void; onConfirmUnknown(): void;
   onSubmit(event: FormEvent<HTMLFormElement>): void;
@@ -35,6 +35,9 @@ export default function TopicReportDialog(props: TopicReportDialogProps) {
           </p>}
         {props.uncertain && <div role="status" className={styles.reportWarning}>
           <p>之前的创建结果未知，禁止自动重复提交。请先打开 GitHub Issues 核对是否已有该报告。</p>
+          <a href={props.githubIssuesUrl} target="_blank" rel="noopener noreferrer">
+            查看现有 Issues
+          </a>
           <button type="button" onClick={props.onConfirmUnknown} disabled={props.pending}>
             我已在 GitHub 核查，允许再次提交
           </button>
