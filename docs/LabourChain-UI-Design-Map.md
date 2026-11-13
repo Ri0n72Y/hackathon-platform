@@ -1,6 +1,6 @@
 # LabourChain UI/UX 设计地图（项目 · 成员 · Issue · Topic · Kanban）
 
-> **版本：v0.7 · 2026-11-13 · 五页面 D2 布局 + Dark 蓝紫 / Light Lime 双主题方向；不表示代码、TopicPage 合并或用户 D4 已完成**
+> **版本：v0.8 · 2026-11-13 · 追加双主题效果图到组件/CSS Modules 的 Coder 交付规范；不表示业务代码或 D4 已实现**
 >
 > **主任务：** [#2 仓库项目页面 / Board / Issue](https://github.com/Ri0n72Y/hackathon-platform/issues/2)  
 > **详细决策文本：** [UI/UX 设计基线](./LabourChain-Repo-Board-Issue-UX-Baseline.md)  
@@ -31,6 +31,7 @@
 - ✅ **视觉方向 D1 已确认**：采用绳网（Inter-Knot）的模块化卡片与胶囊信息层级；**Dark 沿用蓝紫 + 局部明黄，Light 改为冷柠檬黄绿 Lime 单一品牌主色，移除 Light 蓝紫和独立金黄装饰**。五页共享信息架构。
 - 🟡 **双主题规范 D2 Lime 修订**：Dark Token 不变；Light 使用**冷灰绿白画布 #F5F7F1、雾白卡片 #FCFDF9、淡 Lime 分区 #EEF3E1、冷柠檬黄绿主色 #D3E985（深色字）**，链接/焦点采用同色相深绿，移除蓝紫与独立品牌金黄。实际 Warning/Error 继续独立显示。见 [双主题视觉规范](./LabourChain-Visual-Style-Guide.md)。具体色值/主题切换为 D2 建议，待用户实屏确认。
 - ✅ **五页面 D2 主布局已确认**：产品方确认此前对话演示的 Repo Home、成员列表、成员登记、Issue 详情和独立 Topic Page 方案；详细桌面/手机结构及语义边界见 [五页面布局设计](./LabourChain-Five-Page-Layout-Design.md)。**具体像素值仍是 D2 建议，用户 D4 未验收**。
+- 🟡 **Coder 视觉交付已提供（仅设计）**：用户对话中的 Dark 蓝紫 / Light Lime 两张 Repo Home 效果图已提取成 [组件与 CSS Modules 交付](./LabourChain-Visual-Component-Coder-Handoff.md) 和 [非导入式 CSS 参考](./design-reference/LabourChain-Visual-Styles.reference.css)。现有 RepoHomePage、TeamStrip、RepoIssueActivityCard、SafeMarkdown 可沿用；图中虚构成员、PR 导航、Issue 分类筛选和 3D 插画不成为业务需求。Coder 代码实现需另行 PR；用户 D4 未测。
 - 🟡 **绳网布局证据**：游戏截图显示顶部胶囊分区及三列封面贴文，同人源码有瀑布流与详情响应式分区；LabourChain 采用其卡片信息层次，**Repo Feed 保留单列长文，TopicPage 使用封面项目卡**。证据与候选尺寸见 [布局研究](./LabourChain-InterKnot-Layout-Study.md)。
 - ⬜ **双主题源码落地 / 用户 D4 未完成**：既有浅色原型与新增 Light Token/状态并未统一，也没有完整 Dark。仅设计文档更新，没有业务 CSS 变更、线上实测或 Vercel 权限访问；#51 继续由用户实际验收。
 
