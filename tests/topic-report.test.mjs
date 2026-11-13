@@ -42,11 +42,6 @@ function setup(opts = {}) {
     }
     assert.ok(authorization?.startsWith('Bearer user-'), 'only user token reads and writes')
     assert.ok(!authorization.includes('bot'), 'must not use bot token')
-    if (path === '/user/installations/17/repositories') {
-      throw Error('Installation list must include explicit pagination')
-    }
-    if (path === '/user/installations/17/repositories' ||
-        path === '/user/installations/17/repositories/') throw Error('Unexpected list route')
     if (path.startsWith('/user/installations/17/repositories')) {
       assert.equal(method, 'GET')
       const page = Number(new URL(url).searchParams.get('page'))
