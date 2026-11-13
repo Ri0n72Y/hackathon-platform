@@ -2,7 +2,7 @@
 
 ## 来源和当前权限
 - Work Issue #31 与 Member #54 Request #6824645892（Search B1），#6825301010（新授权的 Topic 错误报告 OAuth User Token 创建 Issue）。
-- 独立 PR #64，分支 feat/topic-page-main-31；旧 PR #35 只读参考、保留原 CHANGES_REQUESTED。#3 平台发现流另行验收：#31 仅公开 Topic 聚合，不核验 App Installation。
+- 独立 PR #64，分支 feat/topic-page-main-31；旧 PR #35 只读参考、保留原 CHANGES_REQUESTED。#3 平台发现流另行验收：#31 公开 Topic 候选读取不核验 App Installation；仅错误报告的用户确认写入要求 App × User 授权交集及 Issues:write。
 - GitHub App 权限、OAuth 授权范围、CI 配置、依赖与公共 Vercel Function 数保持不变（当前 11 个）。新 POST 是独立 Topic 报告入口；不修改现有普通 Issue/Config 写入的 Installation 约束。
 
 ## B1 Search 真实调用预算
@@ -13,7 +13,7 @@
 - 可执行 tests/topic-pagination.test.mjs 通过真实 grouped 内部 handler + Control 同源加载函数模拟 10 页 Search、100 项/页、稀疏白名单、1000 与超过 1000 窗口、两页终止、第 2 页 429、page=11 拒绝。
 
 ## Topic 报告显式用户写入
-- 仅已登录 GitHub 用户会看到错误报告编辑入口。GET /api/topic-report?owner&repo 检查当前 User Access Token 对目标的公开可读、Issues 已启用及协作者创建权限，返回绑定当前用户会话指纹、owner/repo、10 分钟 TTL 的密封目标证明。
+- 仅已登录 GitHub 用户会看到错误报告编辑入口。GET /api/topic-report?owner&repo 先检查当前 App 对目标公开仓库有授权且 Installation Issues:write，再检查当前 User Access Token 的安装仓库交集、Issues 已启用及用户协作者创建权限，满足全部条件才返回绑定用户会话指纹、owner/repo、10 分钟 TTL 的密封目标证明。
 - 用户自行修改标题和正文、点击确认后，浏览器向 /api/topic-report 发送单次 JSON POST（credentials: same-origin、Origin、X-LabourChain-Write、confirmed=true 和目标 proof）。
 - 服务端检查同源及 Sec-Fetch-Site、加密 OAuth Session、确认标志、128 KiB 原始请求大小、标题正文长度、owner/repo、禁止任意 destination URL、目标 proof 绑定身份/仓库/有效期；可用时比较 Referer 的 Topic 页面仓库路径。
 - GET 预检和 POST 前均须核验目标公开仓库对应的当前 App Installation、该 Installation 实际授予 `permissions.issues === 'write'`、User Access Token 与 App 的共同仓库授权，以及当前用户对目标仓库 `has_issues=true` 和 triage/push/maintain/admin 至少一项为真；任何一步未确认都拒绝自动报告。实际创建仅使用 User Access Token，绝不回退 App JWT/Installation/Bot Token。
