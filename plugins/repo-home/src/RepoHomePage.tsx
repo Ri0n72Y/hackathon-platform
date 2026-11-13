@@ -11,8 +11,10 @@ const valid = (owner?: string, repo?: string) => !!owner && !!repo &&
   /^[a-z\d-]{1,39}$/i.test(owner) && /^[a-z\d._-]{1,100}$/i.test(repo)
 const errorText = (e: unknown) => e instanceof Error ? e.message : '网络请求失败'
 
+export type RepoHomeTheme = 'dark' | 'light'
+
 /** @summary Orchestrate independent hero/team loading and one-at-a-time cancellable issue pagination. */
-export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
+export default function RepoHomePage({ api, theme }: { api: RepoHomeApi; theme?: RepoHomeTheme }) {
   const { owner = '', repo = '' } = useParams<'owner' | 'repo'>()
   const [branch, setBranch] = useState(() => readDisplayBranch(owner, repo))
   const [draft, setDraft] = useState(branch)
@@ -109,7 +111,8 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
     : ''
   const description = data?.repository.description?.trim() ||
     (data?.readme.state === 'ready' ? summarizeReadme(data.readme.content || '', data.repository.name) : '')
-  return <section className={styles.page}>
+  return <section className={[styles.page, styles.homePage].join(' ')} data-lc-theme={theme}>
+    <div className={styles.homeLayout}>
     <p><Link to="/">平台首页</Link></p>
     {homeLoading && <p role="status">正在读取项目介绍与团队…</p>}
     {homeError && <p role="alert">{homeError} <button type="button" onClick={() => setGeneration(n => n + 1)}>重试介绍</button></p>}
@@ -120,7 +123,7 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
         <p className={styles.muted}>暂无项目简介。</p>}
       <div className={styles.actions}>
         {readmeUrl && <a href={readmeUrl} target="_blank" rel="noopener noreferrer">完整 README</a>}
-        <a href={data.repository.html_url} target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
+        <a className={styles.primaryLink} href={data.repository.html_url} target="_blank" rel="noopener noreferrer">GitHub 仓库</a>
         <Link to={base + '/config'}>仓库配置与 Labels</Link>
         <Link to={base + '/channels'}>项目频道</Link>
       </div>
@@ -131,13 +134,13 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
         <button type="submit">应用分支</button>
       </form>
     </header>}
-    <section className={styles.section} aria-labelledby="team-heading">
+    <section className={[styles.section, styles.teamPanel].join(' ')} aria-labelledby="team-heading">
       <div className={styles.sectionHead}><h2 id="team-heading">团队成员</h2><Link to={base + '/members'}>查看全部成员</Link></div>
       {data ? <TeamStatus team={data.team} base={base} branch={branch}
         onRetry={() => setGeneration(n => n + 1)} /> : !homeLoading && <p>团队信息不可用。</p>}
       {data?.team.state === 'ready' && <TeamStrip members={data.team.members} base={base} />}
     </section>
-    <section className={styles.section} aria-labelledby="feed-heading">
+    <section className={[styles.section, styles.feedSection].join(' ')} aria-labelledby="feed-heading">
       <div className={styles.sectionHead}><h2 id="feed-heading">Repo Issue 动态</h2>
         <button type="button" onClick={refresh}>刷新动态</button></div>
       <div className={styles.feed}>{items.map(issue => <RepoIssueActivityCard
@@ -149,5 +152,6 @@ export default function RepoHomePage({ api }: { api: RepoHomeApi }) {
       {!hasMore && <p className={styles.muted}>已加载全部 Issue</p>}
       <div ref={sentinel} aria-hidden="true" />
     </section>
+    </div>
   </section>
 }
