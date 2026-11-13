@@ -1,6 +1,6 @@
 # LabourChain UI/UX 设计地图（项目 · 成员 · Issue · Topic · Kanban）
 
-> **版本：v0.6 · 2026-11-13 · 五页面 D2 版式 + Dark/Light 双主题设计；不表示代码、TopicPage 合并或用户 D4 已完成**
+> **版本：v0.7 · 2026-11-13 · 五页面 D2 布局 + Dark 蓝紫 / Light Lime 双主题方向；不表示代码、TopicPage 合并或用户 D4 已完成**
 >
 > **主任务：** [#2 仓库项目页面 / Board / Issue](https://github.com/Ri0n72Y/hackathon-platform/issues/2)  
 > **详细决策文本：** [UI/UX 设计基线](./LabourChain-Repo-Board-Issue-UX-Baseline.md)  
@@ -28,8 +28,8 @@
 
 ### 0.1 新增视觉决策与证据范围（2026-11-12）
 
-- ✅ **视觉方向 D1 已确认**：采用《绝区零》绳网（Inter-Knot）的模块化卡片与胶囊标签，融入偏蓝蓝紫交互色；**Dark 保留少量明黄原有装饰，Light 取消黄色装饰，采用中性浅灰蓝与低饱和蓝紫单一品牌色系**。五页共享布局。
-- 🟡 **双主题规范 D2 单色相收敛修订**：Dark 不变；Light 改用**浅灰蓝画布 #F4F5F7、近白卡片 #FBFCFD、雾蓝灰分区 #EDF0F5、柔蓝紫主色 #5667AD**。删除无语义的黄/金视觉竞争，Warn 仍按真实警告状态显示。见 [双主题视觉规范](./LabourChain-Visual-Style-Guide.md)。具体色值及切换机制为 D2 候选，待用户实屏确认。
+- ✅ **视觉方向 D1 已确认**：采用绳网（Inter-Knot）的模块化卡片与胶囊信息层级；**Dark 沿用蓝紫 + 局部明黄，Light 改为冷柠檬黄绿 Lime 单一品牌主色，移除 Light 蓝紫和独立金黄装饰**。五页共享信息架构。
+- 🟡 **双主题规范 D2 Lime 修订**：Dark Token 不变；Light 使用**冷灰绿白画布 #F5F7F1、雾白卡片 #FCFDF9、淡 Lime 分区 #EEF3E1、冷柠檬黄绿主色 #D3E985（深色字）**，链接/焦点采用同色相深绿，移除蓝紫与独立品牌金黄。实际 Warning/Error 继续独立显示。见 [双主题视觉规范](./LabourChain-Visual-Style-Guide.md)。具体色值/主题切换为 D2 建议，待用户实屏确认。
 - ✅ **五页面 D2 主布局已确认**：产品方确认此前对话演示的 Repo Home、成员列表、成员登记、Issue 详情和独立 Topic Page 方案；详细桌面/手机结构及语义边界见 [五页面布局设计](./LabourChain-Five-Page-Layout-Design.md)。**具体像素值仍是 D2 建议，用户 D4 未验收**。
 - 🟡 **绳网布局证据**：游戏截图显示顶部胶囊分区及三列封面贴文，同人源码有瀑布流与详情响应式分区；LabourChain 采用其卡片信息层次，**Repo Feed 保留单列长文，TopicPage 使用封面项目卡**。证据与候选尺寸见 [布局研究](./LabourChain-InterKnot-Layout-Study.md)。
 - ⬜ **双主题源码落地 / 用户 D4 未完成**：既有浅色原型与新增 Light Token/状态并未统一，也没有完整 Dark。仅设计文档更新，没有业务 CSS 变更、线上实测或 Vercel 权限访问；#51 继续由用户实际验收。
@@ -70,7 +70,7 @@ flowchart TB
 
 | 页面 / 区域 | 已完成的设计决定 | 未完成的部分 | 现阶段判断 |
 | --- | --- | --- | --- |
-| **全站视觉风格** | 绳网式五页主布局与偏蓝蓝紫主色已确认，明确 **Dark/Light 两套主题**；[双主题配色](./LabourChain-Visual-Style-Guide.md)和[五页版式](./LabourChain-Five-Page-Layout-Design.md)可追溯 | Light 颜色细节、主题切换入口/偏好机制、双主题样式落地、窄屏/200% 与用户 D4 尚待审阅/实施/验收 | ✅ 双模式与 D2 主结构已确认；🟡 Light 色值及机制候选；D4 未测 |
+| **全站视觉风格** | 已确认五页布局与 **Dark 蓝紫 / Light 冷 Lime** 双主题方向，Light 不使用蓝紫；[色彩 Token](./LabourChain-Visual-Style-Guide.md) 和[五页版式](./LabourChain-Five-Page-Layout-Design.md)可追溯 | Light 具体色值、主题切换入口/偏好机制、样式落地、窄屏/200% 与用户 D4 待审阅/实施/验收 | ✅ 双模式与 D2 主结构已确认；🟡 Light 色值及机制候选；D4 未测 |
 | **仓库首页** `/{owner}/{repo}` | 已确认 D2：宽幅 Hero → 单行 Team 头像 → **单列文章式 Repo Feed**；Description 优先、Issue 第一楼 Markdown 与媒体外链保留原文层次；不含 Board | 色值/间距落地、移动端与真实 README/Markdown 显示；用户 D4 走查 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
 | **成员展示页** `/{owner}/{repo}/members` | 已确认 D2：资料卡桌面双列、窄屏单列，头像/姓名/角色/完整介绍/真实外链；按 JSON 顺序；有权限时可添加 | 真实资料、空态、窄屏和键盘/读屏走查 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
 | **成员登记页** `/{owner}/{repo}/members/register` | 已确认 D2：单列约 640px 表单、真实操作者/展示分支提示、字段旁错误与结果状态；Bot Commit/PR 既有规则不变 | 实际权限、Bot 结果、表单异常与窄屏/键盘用户验收 | ✅ D2 主布局已确认；已有 D3 规则；D4 未测 |
@@ -137,7 +137,7 @@ flowchart TB
 ### 尚未完成：可交付的细节设计与验证
 
 - [ ] Kanban **专注页**详细视觉/布局、信息密度和工具栏。
-- [ ] 新视觉 Token 的页面落点：画布、Hero/Team/Feed、成员资料与登记、Issue 详情、Topic Page 及输入状态；按用户确认的暗色蓝紫基线复核真实显示。
+- [ ] 双主题 Token 的页面落点：Dark 蓝紫与 Light Lime 各自统一应用于画布、Hero/Team/Feed、成员页、登记、Issue 详情、Topic Page 及状态；分别核对真实显示。
 - [ ] 首页 README 与 Issue 正文 Markdown/扩展格式渲染，以及移动端与异常态；不包含 Board。
 - [ ] Team Hover 卡片、成员页与登记表单的真实组件/窄屏/键盘/读屏走查；Bot Contents/PR 权限和 GitHub 写入链路必须真实验证。
 - [ ] Issue **完整页面**（讨论流、劳动历史、属性侧栏）在桌面和窄屏上的可操作原型。
