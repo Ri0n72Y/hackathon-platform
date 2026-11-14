@@ -1,28 +1,45 @@
+/** Public Topic source metadata required by the cross-runtime paging helpers. */
+export type TopicCandidate = { full_name: string; html_url: string }
+export type TopicCandidatesMeta = {
+  repository: { full_name: string };
+  config: { whitelist: boolean };
+  allowedRepositories: string[]
+}
+export type TopicCandidatePage<T extends TopicCandidate> = {
+  page: number; perPage: number; hasNext: boolean; windowExhausted: boolean;
+  items: T[]
+}
+export type TopicCandidateSummary<T extends TopicCandidate> = {
+  items: T[]; ended: boolean; windowExhausted: boolean
+}
+
 export function validTopicRepository(owner: unknown, repo: unknown): boolean
-export function parseTopicYaml(source: unknown, kind?: 'config' | 'project'):
-  { topic: string; whitelist: boolean } & { repository?: string }
+
+/** @summary Report the exact validated scalar shape for each YAML document kind. */
+export function parseTopicYaml(source: unknown, kind: 'project'): { repository: string }
+export function parseTopicYaml(source: unknown, kind?: 'config'): {
+  topic: string; whitelist: boolean
+}
+export function parseTopicYaml(source: unknown, kind: 'config' | 'project'):
+  { repository: string } | { topic: string; whitelist: boolean }
+
 export function readmeFields(readme: string): {
   title: string; description: string; email: string; datetime: string
 }
-export function accumulateTopicProjects(meta: {
-  repository: { full_name: string }; config: { whitelist: boolean };
-  allowedRepositories: string[]
-}, pages: Array<{
-  hasNext: boolean; windowExhausted: boolean;
-  items: Array<{ full_name: string; html_url: string }>
-}>, minimum?: number): {
-  items: Array<{ full_name: string; html_url: string }>
-  ended: boolean; windowExhausted: boolean
-}
+
+/** @summary Preserve full caller repository records while applying the whitelist. */
+export function accumulateTopicProjects<T extends TopicCandidate>(
+  meta: TopicCandidatesMeta,
+  pages: Array<Pick<TopicCandidatePage<T>, 'hasNext' | 'windowExhausted' | 'items'>>,
+  minimum?: number
+): TopicCandidateSummary<T>
+
 export function topicTargetKey(owner: string, repo: string): string
 
-export function loadTopicProjectCandidates(meta: {
-  repository: { full_name: string }; config: { whitelist: boolean };
-  allowedRepositories: string[]
-}, getPage: (page: number) => Promise<{
-  page: number; perPage: number; hasNext: boolean; windowExhausted: boolean;
-  items: Array<{ full_name: string; html_url: string }>
-}>, signal?: AbortSignal, minimum?: number): Promise<{
-  items: Array<{ full_name: string; html_url: string }>
-  ended: boolean; windowExhausted: boolean; pagesRead: number
-}>
+/** @summary Return the original repository type after bounded, abortable pagination. */
+export function loadTopicProjectCandidates<T extends TopicCandidate>(
+  meta: TopicCandidatesMeta,
+  getPage: (page: number) => Promise<TopicCandidatePage<T>>,
+  signal?: AbortSignal,
+  minimum?: number
+): Promise<TopicCandidateSummary<T> & { pagesRead: number }>
