@@ -8,7 +8,7 @@ type Expect<T extends true> = T
 
 /**
  * @summary Compile-only regression for exact Topic YAML modes and untruncated search records.
- * The existing npm run build includes plugins/**/*.ts; this function is never invoked.
+ * The existing npm run build type-checks plugin TypeScript sources; this function is never invoked.
  */
 export async function checkTopicDomainTypes(
   snapshot: TopicSnapshot, page: TopicProjectsPage, signal: AbortSignal
