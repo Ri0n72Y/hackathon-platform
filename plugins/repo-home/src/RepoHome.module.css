@@ -81,7 +81,8 @@
   --lc-shadow:0 8px 24px rgb(45 62 31 / 7%);
 }
 .homeLayout {box-sizing:border-box;max-width:1120px;margin-inline:auto;padding:24px 32px 80px}
-.homePage :where(a,button,input,textarea):focus-visible {
+/* (0,3,1) outranks legacy .page a:focus-visible (0,2,1), including Markdown links. */
+.page.homePage :is(a,button,input,textarea):focus-visible {
   outline:3px solid var(--lc-focus);outline-offset:3px;
 }
 .homePage a {color:var(--lc-link);text-underline-offset:.15em}
