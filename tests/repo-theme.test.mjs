@@ -72,6 +72,45 @@ test('#67 semantic theme tokens require dark white text and Lime dark text witho
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/)
 })
 
+/** @summary Compare specificity for the known legacy and scoped focus selector forms. */
+function focusSpecificity(selector) {
+  const classes = (selector.match(/\\.[a-zA-Z][\\w-]*/g) || []).length
+  const states = (selector.match(/:focus-visible/g) || []).length
+  const type = /:is\\(a,button,input,textarea\\)/.test(selector) ||
+    /(?:^|\\s)(?:a|button|input|textarea):focus-visible/.test(selector) ? 1 : 0
+  return [classes + states, type]
+}
+
+test('#68 B1 scoped keyboard focus outranks legacy .page and Markdown links', () => {
+  const css = source('plugins/repo-home/src/RepoHome.module.css')
+  const markdown = source('plugins/repo-home/src/SafeMarkdown.module.css')
+  const page = source('plugins/repo-home/src/RepoHomePage.tsx')
+  const scoped = '.page.homePage :is(a,button,input,textarea):focus-visible'
+  const legacy = '.page a:focus-visible'
+  const markdownLink = '.markdown :where(a):focus-visible'
+
+  assert.match(css, /\\.page button:focus-visible,\\.page a:focus-visible,\\.page input:focus-visible,\\.page textarea:focus-visible\\{outline:2px solid #195ca8;outline-offset:3px\\}/)
+  assert.ok(css.includes(scoped + ' {'))
+  assert.ok(css.indexOf(scoped) > css.indexOf(legacy))
+  assert.match(css.slice(css.indexOf(scoped)), /outline:3px solid var\\(--lc-focus\\);outline-offset:3px/)
+  assert.match(page, /className=\\{\\[styles\\.page, styles\\.homePage\\]\\.join\\(' '\)\\}/)
+
+  for (const ancestor of [legacy, '.page button:focus-visible',
+    '.page input:focus-visible', '.page textarea:focus-visible', markdownLink]) {
+    const [newClass, newElement] = focusSpecificity(scoped)
+    const [oldClass, oldElement] = focusSpecificity(ancestor)
+    assert.ok(newClass > oldClass || newClass === oldClass && newElement >= oldElement,
+      scoped + ' must outrank ' + ancestor)
+  }
+
+  assert.ok(markdown.includes(markdownLink))
+  assert.match(css, /--lc-focus:#acb7f8;/)
+  assert.match(css, /--lc-focus:#6c8a2a;/)
+  assert.doesNotMatch(css, /!important/)
+  // The selector requires both homepage-only classes; members/register only use .page.
+  assert.doesNotMatch(scoped, /^\\.page (?:a|button|input|textarea):/)
+})
+
 test('#67 fixture theme parameters never change GitHub data or issue ordering', async () => {
   const signal = new AbortController().signal
   const q = name => new URLSearchParams({
