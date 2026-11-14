@@ -51,16 +51,17 @@ test('#67 Repo Home controlled SSR exposes isolated Dark/Lime variants, no inven
 
 test('#67 semantic theme tokens require dark white text and Lime dark text without mixed brand colors', () => {
   const css = source('plugins/repo-home/src/RepoHome.module.css')
-  const dark = css.split('.homePage[data-lc-theme="dark"]')[1]
-    .split('.homePage[data-lc-theme="light"]')[0]
-  const lime = css.split('.homePage[data-lc-theme="light"]')[1]
-    .split('.homeLayout')[0]
-  assert.match(dark, /--lc-primary:#5368e9;/)
-  assert.match(dark, /--lc-on-primary:#fff;/)
-  assert.match(lime, /--lc-primary:#d3e985;/)
-  assert.match(lime, /--lc-on-primary:#283327;/)
-  assert.match(lime, /--lc-link:#4a661b;/)
+  const tokens = source('plugins/react-ui/src/theme.css')
+  const dark = tokens.split('[data-lc-theme="dark"]')[1]
+    .split('[data-lc-theme="light"]')[0]
+  const lime = tokens.split('[data-lc-theme="light"]')[1]
+  assert.match(dark, /--lc-primary: #5368e9;/)
+  assert.match(dark, /--lc-on-primary: #fff;/)
+  assert.match(lime, /--lc-primary: #d3e985;/)
+  assert.match(lime, /--lc-on-primary: #283327;/)
+  assert.match(lime, /--lc-link: #4a661b;/)
   assert.doesNotMatch(lime, /#5368e9|#5865f2|#fbe13b|#92a6ff/i)
+  assert.doesNotMatch(css, /--lc-primary:/, 'Repo Home must not redefine a palette')
   assert.match(css, /\.homePage \.actions \.primaryLink/)
   assert.match(css, /var\(--lc-on-primary\)/)
   assert.match(css, /:focus-visible/)
@@ -104,8 +105,9 @@ test('#68 B1 scoped keyboard focus outranks legacy .page and Markdown links', ()
   }
 
   assert.ok(markdown.includes(markdownLink))
-  assert.match(css, /--lc-focus:#acb7f8;/)
-  assert.match(css, /--lc-focus:#6c8a2a;/)
+  const tokens = source('plugins/react-ui/src/theme.css')
+  assert.match(tokens, /--lc-focus: #acb7f8;/)
+  assert.match(tokens, /--lc-focus: #6c8a2a;/)
   assert.doesNotMatch(css.slice(css.indexOf(scoped), css.indexOf(scoped) + 170), /!important/)
   // The selector requires both homepage-only classes; members/register only use .page.
   assert.doesNotMatch(scoped, /^\.page (?:a|button|input|textarea):/)

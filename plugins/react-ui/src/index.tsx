@@ -1,7 +1,9 @@
 import { Service, type Context } from '@deepseek-ai/cordis'
-import { useSyncExternalStore, type ComponentType } from 'react'
+import { useState, useSyncExternalStore, type ComponentType } from 'react'
 import { Link, useRoutes } from 'react-router'
 import styles from './App.module.css'
+import { persistTheme, readStoredTheme, type ThemeMode } from './theme'
+import './theme.css'
 
 type Registration = { id: string; Component: ComponentType }
 export type PageRegistration = Registration & { path: string }
@@ -76,10 +78,27 @@ function NotFound() {
 
 /** @summary Match plugin-registered pages inside the application's single React Router. */
 export function App({ ui }: { ui: ReactUIService }) {
-  const entries = useSyncExternalStore(ui.subscribe, ui.getSnapshot)
+  const [theme, setTheme] = useState<ThemeMode>(readStoredTheme)
+  const entries = useSyncExternalStore(ui.subscribe, ui.getSnapshot, ui.getSnapshot)
   const routes = entries.flatMap(entry => 'path' in entry
     ? [{ path: entry.path, element: <entry.Component key={entry.id} /> }]
     : [])
   const page = useRoutes([...routes, { path: '*', element: <NotFound /> }])
-  return <main>{page}</main>
+  const next = theme === 'dark' ? 'light' : 'dark'
+  const currentLabel = theme === 'dark' ? '深色' : '浅色'
+  const nextLabel = next === 'dark' ? '深色' : '浅色'
+  function toggleTheme() {
+    setTheme(next)
+    persistTheme(next)
+  }
+  return <div className={styles.app} data-lc-theme={theme}>
+    <header className={styles.toolbar} aria-label="主题设置">
+      <span className={styles.themeStatus}>当前：{currentLabel}模式</span>
+      <button className={styles.themeButton} type="button" onClick={toggleTheme}
+        aria-label={'当前为' + currentLabel + '模式，切换为' + nextLabel + '模式'}>
+        切换为{nextLabel}模式
+      </button>
+    </header>
+    <main className={styles.content}>{page}</main>
+  </div>
 }

@@ -1,9 +1,62 @@
+.app {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--lc-canvas);
+  color: var(--lc-text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.toolbar {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-height: 64px;
+  padding: 10px clamp(16px, 3vw, 32px);
+  background: var(--lc-surface);
+  border-bottom: 1px solid var(--lc-stroke);
+}
+.themeStatus {
+  font-size: 14px;
+  color: var(--lc-text-secondary);
+}
+.themeButton {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--lc-primary);
+  color: var(--lc-on-primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.themeButton:hover {
+  background: var(--lc-primary-hover);
+}
+.themeButton:focus-visible {
+  outline: 3px solid var(--lc-focus);
+  outline-offset: 3px;
+}
+.content {
+  min-width: 0;
+}
 .notFound {
   max-width: 760px;
   margin: 0 auto;
   padding: 44px 22px;
 }
-
 .notFound a {
-  color: #195ca8;
+  color: var(--lc-link);
+}
+.notFound a:focus-visible {
+  outline: 3px solid var(--lc-focus);
+  outline-offset: 3px;
+}
+@media (max-width: 375px) {
+  .toolbar {
+    justify-content: space-between;
+  }
 }
