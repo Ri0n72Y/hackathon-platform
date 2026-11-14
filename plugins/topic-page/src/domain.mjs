@@ -1,6 +1,5 @@
 const OWNER = /^[a-z\d-]{1,39}$/i
 const REPO = /^[a-z\d._-]{1,100}$/i
-const NAME = /^[a-z\d][a-z\d._-]{0,99}$/i
 const TOPIC = /^[a-z\d][a-z\d-]{0,49}$/i
 
 /** @summary Check a public TopicPage source name before it reaches GitHub. */
