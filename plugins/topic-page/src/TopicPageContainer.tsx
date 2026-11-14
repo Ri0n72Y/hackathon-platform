@@ -60,7 +60,7 @@ export default function TopicPageContainer({ owner, repo, api }: {
         const result = await loadTopicProjectCandidates(meta, page =>
           api.getProjects(route, page, abort.signal), abort.signal)
         if (abort.signal.aborted) return
-        projects = result.items as TopicRepository[]
+        projects = result.items
         setState({ snapshot: meta, projects, loading: false,
           error: null, windowExhausted: result.windowExhausted })
       } catch (error) {
