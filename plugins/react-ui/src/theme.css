@@ -1,0 +1,51 @@
+/* Site-wide semantic tokens. These selectors apply to the single UI Host and
+   allow a controlled fixture to override the inherited palette without storage. */
+[data-lc-theme] {
+  --lc-radius: 14px 14px 4px 14px;
+}
+[data-lc-theme="dark"] {
+  color-scheme: dark;
+  --lc-canvas: #11141b;
+  --lc-surface: #191e29;
+  --lc-surface-raised: #242b3b;
+  --lc-surface-input: #202737;
+  --lc-stroke: #3c4659;
+  --lc-stroke-strong: #71809b;
+  --lc-text: #f5f7ff;
+  --lc-text-secondary: #c3ccdc;
+  --lc-text-muted: #96a4c0;
+  --lc-primary: #5368e9;
+  --lc-primary-hover: #465bd2;
+  --lc-on-primary: #fff;
+  --lc-link: #92a6ff;
+  --lc-focus: #acb7f8;
+  --lc-accent-soft: #313a56;
+  --lc-accent-ink: #c3ccff;
+  --lc-error: #ff8498;
+  --lc-success: #72ddb0;
+  --lc-warning: #f4c15d;
+  --lc-shadow: 0 12px 30px rgb(0 0 0 / 24%);
+}
+[data-lc-theme="light"] {
+  color-scheme: light;
+  --lc-canvas: #f5f7f1;
+  --lc-surface: #fcfdf9;
+  --lc-surface-raised: #eef3e1;
+  --lc-surface-input: #f6f9f0;
+  --lc-stroke: #d4dfc9;
+  --lc-stroke-strong: #7d9468;
+  --lc-text: #283327;
+  --lc-text-secondary: #4b5b46;
+  --lc-text-muted: #5b6b55;
+  --lc-primary: #d3e985;
+  --lc-primary-hover: #c4de6c;
+  --lc-on-primary: #283327;
+  --lc-link: #4a661b;
+  --lc-focus: #6c8a2a;
+  --lc-accent-soft: #e7f0c7;
+  --lc-accent-ink: #465f18;
+  --lc-error: #ac334b;
+  --lc-success: #23704a;
+  --lc-warning: #855a19;
+  --lc-shadow: 0 8px 24px rgb(45 62 31 / 7%);
+}
