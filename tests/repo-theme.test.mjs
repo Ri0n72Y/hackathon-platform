@@ -74,10 +74,10 @@ test('#67 semantic theme tokens require dark white text and Lime dark text witho
 
 /** @summary Compare specificity for the known legacy and scoped focus selector forms. */
 function focusSpecificity(selector) {
-  const classes = (selector.match(/\\.[a-zA-Z][\\w-]*/g) || []).length
+  const classes = (selector.match(/\.[a-zA-Z][\w-]*/g) || []).length
   const states = (selector.match(/:focus-visible/g) || []).length
-  const type = /:is\\(a,button,input,textarea\\)/.test(selector) ||
-    /(?:^|\\s)(?:a|button|input|textarea):focus-visible/.test(selector) ? 1 : 0
+  const type = /:is\(a,button,input,textarea\)/.test(selector) ||
+    /(?:^|\s)(?:a|button|input|textarea):focus-visible/.test(selector) ? 1 : 0
   return [classes + states, type]
 }
 
@@ -89,11 +89,11 @@ test('#68 B1 scoped keyboard focus outranks legacy .page and Markdown links', ()
   const legacy = '.page a:focus-visible'
   const markdownLink = '.markdown :where(a):focus-visible'
 
-  assert.match(css, /\\.page button:focus-visible,\\.page a:focus-visible,\\.page input:focus-visible,\\.page textarea:focus-visible\\{outline:2px solid #195ca8;outline-offset:3px\\}/)
+  assert.match(css, /\.page button:focus-visible,\.page a:focus-visible,\.page input:focus-visible,\.page textarea:focus-visible\{outline:2px solid #195ca8;outline-offset:3px\}/)
   assert.ok(css.includes(scoped + ' {'))
   assert.ok(css.indexOf(scoped) > css.indexOf(legacy))
-  assert.match(css.slice(css.indexOf(scoped)), /outline:3px solid var\\(--lc-focus\\);outline-offset:3px/)
-  assert.match(page, /className=\\{\\[styles\\.page, styles\\.homePage\\]\\.join\\(' '\)\\}/)
+  assert.match(css.slice(css.indexOf(scoped)), /outline:3px solid var\(--lc-focus\);outline-offset:3px/)
+  assert.match(page, /className=\{\[styles\.page, styles\.homePage\]\.join\(' '\)\}/)
 
   for (const ancestor of [legacy, '.page button:focus-visible',
     '.page input:focus-visible', '.page textarea:focus-visible', markdownLink]) {
@@ -108,7 +108,7 @@ test('#68 B1 scoped keyboard focus outranks legacy .page and Markdown links', ()
   assert.match(css, /--lc-focus:#6c8a2a;/)
   assert.doesNotMatch(css.slice(css.indexOf(scoped), css.indexOf(scoped) + 170), /!important/)
   // The selector requires both homepage-only classes; members/register only use .page.
-  assert.doesNotMatch(scoped, /^\\.page (?:a|button|input|textarea):/)
+  assert.doesNotMatch(scoped, /^\.page (?:a|button|input|textarea):/)
 })
 
 test('#67 fixture theme parameters never change GitHub data or issue ordering', async () => {
