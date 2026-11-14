@@ -8,10 +8,6 @@
   min-height: 100vh;
   box-sizing: border-box;
 }
-.page * {
-  box-sizing: border-box;
-  min-width: 0;
-}
 .headCard,
 .projectCard,
 .empty,
@@ -286,3 +282,8 @@
   }
 }
 
+/* Preserve the original final cascade priority for descendant min-width. */
+.page * {
+  box-sizing: border-box;
+  min-width: 0;
+}
