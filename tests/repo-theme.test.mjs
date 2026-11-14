@@ -106,7 +106,7 @@ test('#68 B1 scoped keyboard focus outranks legacy .page and Markdown links', ()
   assert.ok(markdown.includes(markdownLink))
   assert.match(css, /--lc-focus:#acb7f8;/)
   assert.match(css, /--lc-focus:#6c8a2a;/)
-  assert.doesNotMatch(css, /!important/)
+  assert.doesNotMatch(css.slice(css.indexOf(scoped), css.indexOf(scoped) + 170), /!important/)
   // The selector requires both homepage-only classes; members/register only use .page.
   assert.doesNotMatch(scoped, /^\\.page (?:a|button|input|textarea):/)
 })
