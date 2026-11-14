@@ -22,7 +22,7 @@ export function createTopicFixtureService(query: URLSearchParams): TopicPageApi 
       new Error('Fixture repository not found'), { status: 404, stage: 'repository' })
   }
   return {
-    reportAvailable: true, // fixture only; production adapter remains disabled.
+    reportAvailable: true, // Matches the production adapter; server App×User checks still govern writes.
     async getSnapshot(route, signal): Promise<TopicSnapshot> {
       await wait(signal); routeCheck(route)
       if (['missing', 'readme-error', 'report-fail', 'report-success'].includes(mode)) {
