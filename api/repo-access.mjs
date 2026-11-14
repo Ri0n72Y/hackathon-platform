@@ -5,6 +5,9 @@ import endpoint4 from './_repo-member-register.mjs'
 import endpoint5 from './_github-installation-probe.mjs'
 import endpoint6 from './_repo-config.mjs'
 import endpoint7 from './_repo-channels.mjs'
+import topicPage from './_topic-page.mjs'
+import topicProjects from './_topic-projects.mjs'
+import topicReport from './_topic-report.mjs'
 
 const handlers = Object.freeze({
   'repo-home': endpoint1,
@@ -14,6 +17,9 @@ const handlers = Object.freeze({
   'github-installation-probe': endpoint5,
   'repo-config': endpoint6,
   'repo-channels': endpoint7,
+  'topic-page': topicPage,
+  'topic-projects': topicProjects,
+  'topic-report': topicReport,
 })
 
 /** @summary Preserve each original API handler while sharing one Vercel Function slot. */

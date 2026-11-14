@@ -6,8 +6,10 @@ import { FLOW_COOKIE, newFlow, readFlow, validLoginReturnPath } from '../api/_oa
 test('OAuth return targets are explicitly allowlisted', () => {
   assert.equal(validLoginReturnPath('/installation-probe.html'), '/installation-probe.html')
   assert.equal(validLoginReturnPath('/sample/repo/issues/28'), '/sample/repo/issues/28')
+  assert.equal(validLoginReturnPath('/topic/sample/repo'), '/topic/sample/repo')
   for (const input of ['//evil.example', 'https://evil.example', '/api/github-callback', '/installation-probe.html?next=evil', '/sample/repo/issues/28?next=evil',
-    '/sample/repo/issues/0', '/sample/repo/issues/a', '/sample/repo/issues/28/extra', null]) {
+    '/sample/repo/issues/0', '/sample/repo/issues/a', '/sample/repo/issues/28/extra', '/topic/bad/name/extra',
+    '/topic/sample/repo?next=evil', null]) {
     assert.equal(validLoginReturnPath(input), '/')
   }
 })

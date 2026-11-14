@@ -6,6 +6,7 @@ import { repoHome, createRepoHomePlugin } from '../../../plugins/repo-home/src/i
 import { repoConfig, createRepoConfigPlugin } from '../../../plugins/repo-config/src/index'
 import { createIssueDetailPlugin } from '../../../plugins/issue-detail/src/index'
 import { channel, createChannelPlugin } from '../../../plugins/channel/src/index'
+import { topicPage, createTopicPagePlugin } from '../../../plugins/topic-page/src/index'
 
 /** @summary Assemble ordinary routes or independently test Repo Home and Config with controlled fixtures. */
 export async function startRuntime() {
@@ -17,15 +18,17 @@ export async function startRuntime() {
     fibers.push(uiFiber); await uiFiber
     const query = new URLSearchParams(window.location.search)
     const channelFixture = query.get('channelFixture') === '1'
+    const topicFixture = query.get('topicFixture') === '1'
     const isolated = query.get('repoOnly') === '1' || query.get('repoFixture') === '1' ||
-      query.get('configFixture') === '1' || channelFixture
+      query.get('configFixture') === '1' || channelFixture || topicFixture
     if (!isolated) {
       const issuesFiber = ctx.plugin(RepoIssuesService)
       fibers.push(issuesFiber); await issuesFiber
       const panelFiber = ctx.plugin(repoPanel)
       fibers.push(panelFiber); await panelFiber
     }
-    if (!channelFixture) {
+    if (!topicFixture) {
+      if (!channelFixture) {
       const homePlugin = query.get('repoFixture') === '1'
         ? createRepoHomePlugin((await import('./repo-fixture')).createRepoFixtureService(query), {
           // Controlled visual fixture only; no site default, selector, or persistence.
@@ -41,7 +44,14 @@ export async function startRuntime() {
         : repoConfig
       const configFiber = ctx.plugin(configPlugin)
       fibers.push(configFiber); await configFiber
+      }
     }
+
+    const topicPlugin = topicFixture
+      ? createTopicPagePlugin((await import('./topic-fixture')).createTopicFixtureService(query))
+      : topicPage
+    const topicFiber = ctx.plugin(topicPlugin)
+    fibers.push(topicFiber); await topicFiber
 
     const channelPlugin = channelFixture
       ? createChannelPlugin((await import('./channel-fixture')).createChannelFixtureService(query))
