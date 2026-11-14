@@ -79,7 +79,7 @@ function NotFound() {
 /** @summary Match plugin-registered pages inside the application's single React Router. */
 export function App({ ui }: { ui: ReactUIService }) {
   const [theme, setTheme] = useState<ThemeMode>(readStoredTheme)
-  const entries = useSyncExternalStore(ui.subscribe, ui.getSnapshot)
+  const entries = useSyncExternalStore(ui.subscribe, ui.getSnapshot, ui.getSnapshot)
   const routes = entries.flatMap(entry => 'path' in entry
     ? [{ path: entry.path, element: <entry.Component key={entry.id} /> }]
     : [])
