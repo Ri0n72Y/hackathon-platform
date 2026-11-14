@@ -24,8 +24,8 @@ export async function checkTopicDomainTypes(
   project.topic
   // @ts-expect-error config YAML does not return a repository.
   config.repository
-  // @ts-expect-error project YAML repository is never optional.
-  const missingProject: { repository?: string } = { topic: project.topic }
+  type _ProjectResultExact = Expect<Equal<typeof project, { repository: string }>>
+  type _ConfigResultExact = Expect<Equal<typeof config, { topic: string; whitelist: boolean }>>
 
   const summary = accumulateTopicProjects(snapshot, [page])
   const loaded = await loadTopicProjectCandidates(snapshot, async () => page, signal)
